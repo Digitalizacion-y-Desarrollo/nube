@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
@@ -12,6 +14,11 @@
     --color-brand-dark: #340c1b;
     --color-gold: #be985c;
     --color-canvas: #f8f9fa;
+    --color-surface: #ffffff;
+    --color-surface-alt: #f8f9fa;
+    --color-soft: #f3f4f6;
+    --color-warm: #fdfbf8;
+    --color-line: #e5e7eb;
     --color-ink: #1f2937;
     --color-muted: #6b7280;
 }
@@ -21,8 +28,23 @@
         color-scheme: light;
     }
 
+    html.dark {
+        color-scheme: dark;
+        --color-canvas: #0d0a0c;
+        --color-surface: #171216;
+        --color-surface-alt: #211a1f;
+        --color-soft: #2a2227;
+        --color-warm: #251b20;
+        --color-line: #3a2d34;
+        --color-ink: #f5edf0;
+        --color-muted: #b9aeb3;
+    }
+
     body {
         min-width: 320px;
+        transition:
+            background-color 180ms ease,
+            color 180ms ease;
     }
 
     button,
@@ -46,6 +68,27 @@
         background: rgb(255 255 255 / 72%);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
+    }
+
+    .dark .glass-shell {
+        background: rgb(23 18 22 / 82%);
+        border-color: rgb(190 152 92 / 22%);
+    }
+
+    .dark .text-brand {
+        color: #ffffff;
+    }
+
+    .theme-icon-sun {
+        display: none;
+    }
+
+    .dark .theme-icon-sun {
+        display: block;
+    }
+
+    .dark .theme-icon-moon {
+        display: none;
     }
 
     .login-brand-panel {

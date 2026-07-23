@@ -11,10 +11,10 @@
     aria-modal="true"
     aria-labelledby="{{ $id }}-title"
 >
-    <div class="w-full max-w-lg rounded-2xl border border-white/70 bg-white p-6 shadow-2xl">
+    <div class="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl">
         <div class="mb-5 flex items-center justify-between gap-4">
-            <h2 id="{{ $id }}-title" class="text-lg font-bold text-[#1f2937]">{{ $title }}</h2>
-            <button type="button" data-modal-close="{{ $id }}" class="rounded-full p-2 text-[#6b7280] hover:bg-[#f3f4f6]" aria-label="Cerrar">
+            <h2 id="{{ $id }}-title" class="text-lg font-bold text-ink">{{ $title }}</h2>
+            <button type="button" data-modal-close="{{ $id }}" class="rounded-full p-2 text-muted hover:bg-soft" aria-label="Cerrar">
                 <span aria-hidden="true">×</span>
             </button>
         </div>

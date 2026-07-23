@@ -1,19 +1,19 @@
-# AGENT.md — Nube Empresarial
+# AGENT.md — Nube Municipal
 
 ## Propósito
 
-Este repositorio contiene el MVP de **Nube Empresarial**, una plataforma web
+Este repositorio contiene el MVP de **Nube Municipal**, una plataforma web
 interna similar a OneDrive para almacenar, organizar, descargar y administrar
 archivos privados, colaborativos y públicos internos.
 
 Antes de implementar cambios, consulta como fuentes de verdad:
 
-- `Propuesta_MVP_Nube_Empresarial.md`
-- `Plan_de_Desarrollo_por_Fases_Nube_Empresarial.md`
-- `Base_de_Datos_Nube_Empresarial.md`
+- `Propuesta_MVP_Nube_Municipal.md`
+- `Plan_de_Desarrollo_por_Fases_Nube_Municipal.md`
+- `Base_de_Datos_Nube_Municipal.md`
 
 Si existe una contradicción, prioriza el modelo detallado de
-`Base_de_Datos_Nube_Empresarial.md` para datos, el plan por fases para el orden
+`Base_de_Datos_Nube_Municipal.md` para datos, el plan por fases para el orden
 de implementación y la propuesta para el alcance general del MVP.
 
 ## Tecnologías obligatorias
@@ -32,7 +32,7 @@ externo ni edición de documentos en línea.
 ## Integración de autenticación
 
 El sistema de accesos externo es la fuente oficial de usuarios, departamentos,
-roles y permisos. Nube Empresarial mantiene únicamente una copia local de
+roles y permisos. Nube Municipal mantiene únicamente una copia local de
 trabajo.
 
 - API base: `https://accesos.digitalneza.com`.
@@ -172,6 +172,8 @@ Secciones principales:
 
 ## Interfaz
 
+- Admitir modos claro y oscuro, persistir la preferencia del usuario y evitar
+  destellos del tema incorrecto durante la carga.
 - Seguir los mockups aprobados en Figma.
 - Color principal: `#601633`.
 - Color secundario: `#BE985C`.

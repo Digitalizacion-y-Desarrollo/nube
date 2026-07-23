@@ -6,8 +6,8 @@
 @php
     $variants = [
         'primary' => 'border-brand bg-brand text-white hover:bg-[#4f122b] focus-visible:outline-brand',
-        'secondary' => 'border-[#eceef0] bg-white text-[#1f2937] hover:border-gold hover:bg-[#fdfbf8] focus-visible:outline-gold',
-        'outline' => 'border-gold bg-[#f9f6f0] text-brand hover:bg-[#f4ecdf] focus-visible:outline-gold',
+        'secondary' => 'border-line bg-surface text-ink hover:border-gold hover:bg-warm focus-visible:outline-gold',
+        'outline' => 'border-gold bg-warm text-brand hover:bg-soft focus-visible:outline-gold dark:text-white',
         'danger' => 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 focus-visible:outline-red-600',
     ];
 @endphp

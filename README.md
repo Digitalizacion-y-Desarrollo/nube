@@ -1,4 +1,4 @@
-# Nube Empresarial
+# Nube Municipal
 
 MVP de una plataforma interna para almacenar, organizar y administrar archivos
 privados, colaborativos y públicos internos.
@@ -25,7 +25,7 @@ npm run build
 C:\wamp64\bin\php\php8.2.29\php.exe artisan key:generate
 ```
 
-La base local configurada es `nube_empresarial`.
+La base local configurada es `nube_municipal`.
 
 ## Rutas actuales
 
@@ -58,8 +58,10 @@ resources/views/
 └── dashboard.blade.php
 ```
 
-La interfaz utiliza Blade, Tailwind CSS 4 y JavaScript nativo. Está adaptada de
-los nodos `13:11`, `15:598` y `15:1219` del archivo aprobado en Figma.
+La interfaz utiliza Blade, Tailwind CSS 4 y JavaScript nativo. Incluye modos
+claro y oscuro, respeta la preferencia del sistema y conserva la selección en
+el navegador. Está adaptada de los nodos `13:11`, `15:598` y `15:1219` del
+archivo aprobado en Figma.
 
 ## Verificación
 

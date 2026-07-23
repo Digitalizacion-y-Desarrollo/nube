@@ -8,13 +8,14 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="description" content="Panel de Nube Empresarial.">
+        <meta name="description" content="Panel de Nube Municipal.">
         <title>{{ $title }} · {{ config('app.name') }}</title>
+        <x-ui.theme-script />
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="min-h-screen bg-canvas font-sans text-[#1f2937] antialiased">
+    <body class="min-h-screen bg-canvas font-sans text-ink antialiased">
         <div class="min-h-screen lg:flex">
             <x-navigation.sidebar :user="$user" />
 
@@ -28,10 +29,10 @@
 
         <x-navigation.mobile-nav />
         <x-ui.modal id="upload-modal" title="Subir archivo">
-            <p class="text-sm leading-6 text-[#6b7280]">El flujo de carga se conectará durante el Épico 5. La interfaz base ya está preparada.</p>
+            <p class="text-sm leading-6 text-muted">El flujo de carga se conectará durante el Épico 5. La interfaz base ya está preparada.</p>
         </x-ui.modal>
         <x-ui.modal id="folder-modal" title="Nueva carpeta">
-            <p class="text-sm leading-6 text-[#6b7280]">La creación de carpetas se conectará durante el Épico 4.</p>
+            <p class="text-sm leading-6 text-muted">La creación de carpetas se conectará durante el Épico 4.</p>
         </x-ui.modal>
     </body>
 </html>

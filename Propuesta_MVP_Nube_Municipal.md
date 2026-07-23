@@ -4,7 +4,7 @@
 **Fecha de inicio:** jueves 23 de julio de 2026  
 **Fecha de entrega:** viernes 31 de julio de 2026  
 **Duración disponible:** 7 días hábiles  
-**Nombre provisional:** Nube Empresarial
+**Nombre provisional:** Nube Municipal
 
 ---
 
@@ -485,6 +485,7 @@ El límite deberá coincidir en Laravel, PHP y Nginx o Apache.
 
 La interfaz incluirá:
 
+- Modos claro y oscuro con preferencia persistente.
 - Barra lateral.
 - Encabezado con nombre del usuario y área.
 - Vista tipo lista.

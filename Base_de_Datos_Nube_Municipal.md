@@ -1,10 +1,10 @@
-# Base de Datos — Nube Empresarial
+# Base de Datos — Nube Municipal
 
 ## 1. Objetivo
 
-Este documento define el modelo de datos del MVP de **Nube Empresarial**, una plataforma interna para almacenar archivos privados, colaborativos y públicos.
+Este documento define el modelo de datos del MVP de **Nube Municipal**, una plataforma interna para almacenar archivos privados, colaborativos y públicos.
 
-El sistema de accesos externo será la fuente oficial de usuarios, departamentos, roles y permisos. Nube Empresarial conservará una copia local de esos datos para facilitar relaciones, consultas, autorización y auditoría.
+El sistema de accesos externo será la fuente oficial de usuarios, departamentos, roles y permisos. Nube Municipal conservará una copia local de esos datos para facilitar relaciones, consultas, autorización y auditoría.
 
 Las tablas propias de la plataforma serán:
 
@@ -491,7 +491,7 @@ No se actualizarán todos los usuarios en cada inicio de sesión. Solo se sincro
 
 ```text
 Sistema de accesos = fuente oficial
-Base de datos de Nube Empresarial = copia local de trabajo
+Base de datos de Nube Municipal = copia local de trabajo
 ```
 
 ---

@@ -1,5 +1,37 @@
 import './bootstrap';
 
+const themePreference = {
+    get() {
+        return localStorage.getItem('theme');
+    },
+    set(theme) {
+        localStorage.setItem('theme', theme);
+    },
+};
+
+const syncThemeControls = () => {
+    const isDark = document.documentElement.classList.contains('dark');
+
+    document.querySelectorAll('[data-theme-toggle]').forEach((toggle) => {
+        toggle.setAttribute('aria-pressed', String(isDark));
+        toggle.setAttribute('aria-label', isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+        toggle.setAttribute('title', isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+    });
+};
+
+const setTheme = (theme, persist = true) => {
+    const isDark = theme === 'dark';
+
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+
+    if (persist) {
+        themePreference.set(theme);
+    }
+
+    syncThemeControls();
+};
+
 const setSidebarState = (open) => {
     const sidebar = document.querySelector('#mobile-sidebar');
 
@@ -13,6 +45,11 @@ const setSidebarState = (open) => {
 };
 
 document.addEventListener('click', (event) => {
+    if (event.target.closest('[data-theme-toggle]')) {
+        const nextTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+        setTheme(nextTheme);
+    }
+
     if (event.target.closest('[data-sidebar-open]')) {
         setSidebarState(true);
     }
@@ -48,6 +85,14 @@ document.addEventListener('click', (event) => {
         input.type = showPassword ? 'text' : 'password';
         passwordToggle.setAttribute('aria-pressed', String(showPassword));
         passwordToggle.setAttribute('aria-label', showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    }
+});
+
+document.addEventListener('DOMContentLoaded', syncThemeControls);
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
+    if (!themePreference.get()) {
+        setTheme(event.matches ? 'dark' : 'light', false);
     }
 });
 

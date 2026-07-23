@@ -1,5 +1,5 @@
 # Plan de desarrollo por fases
-## Nube Empresarial — MVP
+## Nube Municipal — MVP
 
 **Proyecto:** Plataforma interna de almacenamiento de archivos  
 **Tecnologías:** Laravel 12, Blade, Tailwind CSS, JavaScript nativo y base de datos relacional  
@@ -12,7 +12,7 @@
 
 ## 1. Objetivo general
 
-Desarrollar un MVP funcional de **Nube Empresarial**, una plataforma interna similar a OneDrive que permita a los usuarios almacenar, organizar, descargar y administrar archivos privados, colaborativos y públicos internos.
+Desarrollar un MVP funcional de **Nube Municipal**, una plataforma interna similar a OneDrive que permita a los usuarios almacenar, organizar, descargar y administrar archivos privados, colaborativos y públicos internos.
 
 La plataforma utilizará el sistema de accesos existente como fuente oficial de usuarios, departamentos, roles y permisos. Laravel conservará una copia local de esa información para facilitar las relaciones, la autorización, las consultas y la auditoría.
 
@@ -115,6 +115,7 @@ storage/app/nube/
 #### Interfaz base
 
 - Crear el layout principal.
+- Implementar modos claro y oscuro con preferencia persistente.
 - Implementar la barra lateral.
 - Implementar el encabezado.
 - Crear el contenedor principal.
@@ -654,6 +655,7 @@ Convertir los mockups aprobados en vistas funcionales con Blade y Tailwind CSS.
 - Blanco.
 - Negro.
 - Estética moderna inspirada en Liquid Glass.
+- Tema oscuro accesible que conserve la identidad visual institucional.
 
 ### Actividades
 
@@ -1037,7 +1039,7 @@ Una tarea se considera terminada cuando:
 
 # 7. Resultado esperado
 
-Al concluir las fases, Nube Empresarial deberá permitir que un usuario autenticado:
+Al concluir las fases, Nube Municipal deberá permitir que un usuario autenticado:
 
 1. Ingrese mediante el sistema central.
 2. Sincronice su usuario, departamento, roles y permisos.
@@ -1074,4 +1076,3 @@ El MVP se considerará aceptado cuando:
 14. La interfaz funcione con Blade y Tailwind CSS.
 15. Las operaciones críticas queden registradas en auditoría.
 16. La aplicación pueda desplegarse siguiendo la documentación.
-

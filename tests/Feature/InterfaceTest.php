@@ -10,9 +10,10 @@ class InterfaceTest extends TestCase
     {
         $this->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('Nube Empresarial')
+            ->assertSee('Nube Municipal')
             ->assertSee('Buenos días, Carlos')
             ->assertSee('Archivos Recientes')
+            ->assertSee('data-theme-toggle', false)
             ->assertDontSee('Almacenamiento')
             ->assertDontSee('Espacio utilizado')
             ->assertDontSee('12.4 GB / 50 GB utilizados');
@@ -23,6 +24,7 @@ class InterfaceTest extends TestCase
         $this->get(route('login'))
             ->assertOk()
             ->assertSee('Iniciar Sesión')
+            ->assertSee('data-theme-toggle', false)
             ->assertSee('Correo electrónico')
             ->assertSee('Mantener mi sesión iniciada');
     }
