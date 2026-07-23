@@ -38,6 +38,14 @@ return [
             'report' => false,
         ],
 
+        'nube' => [
+            'driver' => 'local',
+            'root' => storage_path('app/nube'),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => true,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

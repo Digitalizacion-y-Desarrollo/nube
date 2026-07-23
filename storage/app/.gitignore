@@ -1,4 +1,6 @@
 *
 !private/
 !public/
+!nube/
+!nube/.gitignore
 !.gitignore

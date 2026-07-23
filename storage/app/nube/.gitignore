@@ -1,0 +1,8 @@
+*
+!departamentos/
+!departamentos/.gitignore
+!papelera/
+!papelera/.gitignore
+!temporales/
+!temporales/.gitignore
+!.gitignore
