@@ -6,6 +6,62 @@
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-brand: #601633;
+    --color-brand-dark: #340c1b;
+    --color-gold: #be985c;
+    --color-canvas: #f8f9fa;
+    --color-ink: #1f2937;
+    --color-muted: #6b7280;
+}
+
+@layer base {
+    html {
+        color-scheme: light;
+    }
+
+    body {
+        min-width: 320px;
+    }
+
+    button,
+    a,
+    input {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    button {
+        cursor: pointer;
+    }
+
+    ::selection {
+        background: rgb(96 22 51 / 18%);
+        color: #340c1b;
+    }
+}
+
+@layer components {
+    .glass-shell {
+        background: rgb(255 255 255 / 72%);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    .login-brand-panel {
+        background:
+            radial-gradient(circle at 42% 55%, rgb(120 29 63 / 42%) 0, transparent 44%),
+            linear-gradient(90deg, #340c1b 0%, #601633 100%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
 }
