@@ -19,7 +19,6 @@ class DashboardController extends Controller
                 ['label' => 'Archivos privados', 'value' => '47', 'hint' => 'Acceso exclusivo tuyo', 'icon' => 'lock-keyhole'],
                 ['label' => 'Archivos colaborativos', 'value' => '128', 'hint' => 'Compartidos con el equipo', 'icon' => 'users'],
                 ['label' => 'Archivos públicos', 'value' => '34', 'hint' => 'Público general interno', 'icon' => 'globe'],
-                ['label' => 'Espacio utilizado', 'value' => '12.4 GB', 'hint' => '12.4 GB / 50 GB utilizados', 'icon' => 'database'],
                 ['label' => 'Papelera', 'value' => '8 elementos', 'hint' => 'Eliminado recientemente', 'icon' => 'trash'],
             ],
             'files' => [

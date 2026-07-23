@@ -41,18 +41,7 @@
         </nav>
     </div>
 
-    <div class="space-y-5">
-        <section aria-label="Uso de almacenamiento" class="rounded-xl bg-black/[0.02] p-4">
-            <div class="mb-2 flex justify-between text-xs">
-                <span class="font-semibold">Almacenamiento</span>
-                <span class="font-medium text-[#6b7280]">24.8%</span>
-            </div>
-            <div class="mb-2 h-1.5 overflow-hidden rounded-full bg-[#e5e7eb]">
-                <div class="h-full w-[24.8%] rounded-full bg-brand"></div>
-            </div>
-            <p class="text-[11px] text-[#6b7280]">12.4 GB / 50 GB utilizados</p>
-        </section>
-
+    <div>
         <button type="button" class="flex w-full items-center gap-3 rounded-xl p-1 text-left transition hover:bg-black/[0.03]">
             <img src="{{ $user['avatar'] ?? asset('assets/figma/avatar.png') }}" alt="" width="40" height="40" class="size-10 rounded-full object-cover">
             <span class="min-w-0">

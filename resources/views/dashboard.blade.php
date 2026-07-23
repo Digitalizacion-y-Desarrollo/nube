@@ -45,7 +45,7 @@
     </section>
 
     <section aria-label="Indicadores" class="-mx-5 mb-5 overflow-x-auto px-5 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:mb-6 lg:overflow-visible lg:px-0">
-        <div class="flex min-w-max gap-2 lg:grid lg:min-w-0 lg:grid-cols-5 lg:gap-4">
+        <div class="flex min-w-max gap-2 lg:grid lg:min-w-0 lg:grid-cols-4 lg:gap-4">
             @foreach ($indicators as $indicator)
                 <article class="w-[115px] rounded-xl border border-[#e5e7eb] bg-white p-3 lg:w-auto lg:p-5">
                     <div class="mb-2 flex items-center justify-between lg:mb-3">
@@ -56,11 +56,6 @@
                     </div>
                     <p class="whitespace-nowrap text-lg font-bold text-brand lg:text-xl lg:text-[#1f2937]">{{ $indicator['value'] }}</p>
                     <p class="mt-1 hidden truncate text-[11px] text-[#6b7280] lg:block">{{ $indicator['hint'] }}</p>
-                    @if ($indicator['icon'] === 'database')
-                        <div class="mt-2 hidden h-1 overflow-hidden rounded-full bg-[#e5e7eb] lg:block">
-                            <div class="h-full w-1/4 bg-gold"></div>
-                        </div>
-                    @endif
                 </article>
             @endforeach
         </div>

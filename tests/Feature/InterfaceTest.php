@@ -12,7 +12,10 @@ class InterfaceTest extends TestCase
             ->assertOk()
             ->assertSee('Nube Empresarial')
             ->assertSee('Buenos días, Carlos')
-            ->assertSee('Archivos Recientes');
+            ->assertSee('Archivos Recientes')
+            ->assertDontSee('Almacenamiento')
+            ->assertDontSee('Espacio utilizado')
+            ->assertDontSee('12.4 GB / 50 GB utilizados');
     }
 
     public function test_login_renders_the_approved_form_structure(): void
