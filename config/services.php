@@ -22,6 +22,13 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
+    'access' => [
+        'url' => env('ACCESS_API_URL', 'https://accesos.digitalneza.com'),
+        'system_key' => env('ACCESS_SYSTEM_KEY'),
+        'timeout' => (int) env('ACCESS_TIMEOUT', 10),
+        'session_check_interval' => (int) env('ACCESS_SESSION_CHECK_INTERVAL', 300),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

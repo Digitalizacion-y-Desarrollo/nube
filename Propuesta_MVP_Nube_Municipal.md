@@ -349,20 +349,26 @@ Laravel validará permisos antes de:
 
 La ubicación física del archivo nunca será el único mecanismo de seguridad.
 
-### 7.3 Permisos centrales sugeridos
+### 7.3 Permisos centrales
 
-Para el MVP:
+El sistema de accesos administra el catálogo oficial y devuelve los permisos
+efectivos como una lista plana de claves globalmente únicas. Las claves
+incluyen el recurso y utilizan guion bajo, por ejemplo:
 
 ```text
-nube.acceder
-nube.archivos.subir
-nube.archivos.descargar
-nube.archivos.eliminar
-nube.archivos.publicar
-nube.administrar
+nube_inicio_ver
+nube_mis_archivos_subir
+nube_departamento_descargar
+nube_publicos_publicar
+nube_papelera_restaurar
+nube_administracion_administrar
 ```
 
-Los permisos centrales definirán funciones generales. Las Policies locales decidirán si un usuario puede operar sobre un archivo específico.
+Los 28 permisos del MVP están agrupados por recurso en la Fase 3 del plan de
+desarrollo. Nube Municipal los sincroniza dinámicamente durante el login y no
+mantiene un catálogo fijo en producción. Los roles son informativos; los
+permisos efectivos autorizan las capacidades y las Policies locales deciden si
+el usuario puede operar sobre un archivo o carpeta específicos.
 
 ---
 

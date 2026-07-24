@@ -90,6 +90,21 @@ document.addEventListener('click', (event) => {
 
 document.addEventListener('DOMContentLoaded', syncThemeControls);
 
+document.querySelectorAll('[data-login-form]').forEach((form) => {
+    form.addEventListener('submit', () => {
+        const button = form.querySelector('[data-login-submit]');
+        const label = form.querySelector('[data-login-label]');
+
+        if (!button || !label) {
+            return;
+        }
+
+        button.disabled = true;
+        button.classList.add('opacity-70', 'cursor-wait');
+        label.textContent = 'Autenticando...';
+    });
+});
+
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
     if (!themePreference.get()) {
         setTheme(event.matches ? 'dark' : 'light', false);

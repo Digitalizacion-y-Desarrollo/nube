@@ -230,16 +230,9 @@ collaborative
 public
 ```
 
-Crear seeders para permisos iniciales:
-
-```text
-nube.acceder
-nube.archivos.subir
-nube.archivos.descargar
-nube.archivos.eliminar
-nube.archivos.publicar
-nube.administrar
-```
+No crear un seeder de producción con un catálogo fijo de permisos. El sistema
+de accesos es la única fuente oficial. Los seeders de permisos se limitarán a
+datos representativos para los entornos `local` y `testing`.
 
 #### Datos de prueba
 
@@ -255,8 +248,8 @@ nube.administrar
 - Modelos Eloquent.
 - Relaciones funcionales.
 - Factories.
-- Seeders.
-- Catálogo de permisos.
+- Seeders de datos demostrativos.
+- Estructura local preparada para sincronizar permisos dinámicamente.
 
 ### Criterio de aceptación
 
@@ -313,10 +306,149 @@ Después de un login exitoso:
 2. Crear o actualizar el usuario.
 3. Crear o actualizar roles.
 4. Sincronizar `user_roles`.
-5. Crear o actualizar permisos.
-6. Sincronizar `user_permissions`.
+5. Crear o actualizar dinámicamente cada permiso efectivo recibido del API.
+6. Sincronizar `user_permissions` con la lista exacta recibida.
 7. Actualizar `last_login_at`.
 8. Actualizar `last_synced_at`.
+
+#### Modelo operativo de roles y permisos
+
+El sistema de accesos devuelve los permisos como una lista plana de claves:
+
+```json
+{
+  "roles": [
+    "nube_colaborador"
+  ],
+  "permissions": [
+    "nube_inicio_ver",
+    "nube_mis_archivos_ver",
+    "nube_mis_archivos_subir"
+  ]
+}
+```
+
+Reglas obligatorias:
+
+- Los roles son únicamente informativos y no conceden capacidades por sí
+  mismos.
+- Los permisos efectivos asignados al usuario son la única fuente de
+  autorización funcional.
+- Cada permiso debe tener una clave globalmente única porque el API no utiliza
+  el recurso para distinguir permisos con el mismo nombre.
+- Las claves utilizarán guion bajo y estarán prefijadas con la clave del
+  recurso.
+- Laravel no autorizará acciones por el nombre de un rol.
+- Los roles recibidos se sincronizarán en `user_roles` para perfil, consulta y
+  auditoría.
+- La lista efectiva recibida del API se sincronizará exactamente en
+  `user_permissions`.
+- En cada sincronización se eliminarán las asignaciones locales que el API ya
+  no devuelva.
+- No se eliminarán globalmente registros de `permissions` durante el login,
+  porque pueden continuar asignados a otros usuarios.
+- No existirá un catálogo fijo de permisos en seeders de producción.
+- Los seeders locales contendrán únicamente permisos representativos para
+  demostración y pruebas; no deben copiar el catálogo completo de Accesos.
+- Los permisos decidirán si una acción está disponible y las Policies
+  comprobarán propietario, departamento, visibilidad y estado del recurso.
+- Ocultar una sección o botón no sustituye la validación en middleware,
+  controlador y Policy.
+
+Roles informativos recomendados:
+
+```text
+nube_consulta
+nube_colaborador
+nube_publicador
+nube_administrador
+```
+
+Uso descriptivo:
+
+- `nube_consulta`: usuarios orientados a consulta y descarga.
+- `nube_colaborador`: usuarios que administran sus archivos privados y
+  consultan contenido departamental y público.
+- `nube_publicador`: usuarios que también pueden crear y publicar contenido
+  departamental o público.
+- `nube_administrador`: responsables operativos de la plataforma.
+
+Aunque un usuario tenga el rol `nube_administrador`, deberá recibir
+explícitamente todos los permisos que necesite.
+
+#### Catálogo de permisos por recurso
+
+Este catálogo define el contrato funcional esperado y se administra en el
+sistema de accesos. Nube Empresarial no lo duplicará en un seeder de
+producción; registrará localmente las claves conforme las reciba del API.
+
+Recurso `nube_inicio`:
+
+```text
+nube_inicio_ver
+```
+
+`nube_inicio_ver` es obligatorio para iniciar sesión y acceder a la
+aplicación.
+
+Recurso `nube_mis_archivos`:
+
+```text
+nube_mis_archivos_ver
+nube_mis_archivos_crear_carpeta
+nube_mis_archivos_subir
+nube_mis_archivos_descargar
+nube_mis_archivos_renombrar
+nube_mis_archivos_mover
+nube_mis_archivos_eliminar
+nube_mis_archivos_publicar
+```
+
+Recurso `nube_departamento`:
+
+```text
+nube_departamento_ver
+nube_departamento_crear_carpeta
+nube_departamento_subir
+nube_departamento_descargar
+nube_departamento_renombrar
+nube_departamento_mover
+nube_departamento_eliminar
+nube_departamento_publicar
+```
+
+Recurso `nube_publicos`:
+
+```text
+nube_publicos_ver
+nube_publicos_crear_carpeta
+nube_publicos_subir
+nube_publicos_descargar
+nube_publicos_renombrar
+nube_publicos_mover
+nube_publicos_eliminar
+nube_publicos_publicar
+```
+
+Recurso `nube_papelera`:
+
+```text
+nube_papelera_ver
+nube_papelera_restaurar
+```
+
+La eliminación física definitiva no forma parte del alcance inicial del MVP.
+
+Recurso `nube_administracion`:
+
+```text
+nube_administracion_administrar
+```
+
+El catálogo operativo administrado en Accesos contiene 28 permisos únicos. El permiso
+`nube_administracion_administrar` será el indicador de capacidad
+administrativa para las Policies; el rol informativo no reemplaza esta
+comprobación.
 
 #### Sesión
 
@@ -324,7 +456,7 @@ Después de un login exitoso:
 - Consumir `GET /api/auth/me` cuando sea necesario.
 - Detectar token vencido.
 - Limpiar la sesión cuando el token no sea válido.
-- Verificar el permiso `nube.acceder`.
+- Verificar el permiso `nube_inicio_ver`.
 
 #### Cierre de sesión
 
@@ -356,7 +488,27 @@ Contemplar:
 
 ### Criterio de aceptación
 
-Un usuario válido debe iniciar sesión, quedar registrado o actualizado localmente, conservar su departamento, roles y permisos, y acceder a la aplicación.
+Un usuario válido debe iniciar sesión, quedar registrado o actualizado
+localmente, conservar su departamento y roles informativos, sincronizar
+exactamente sus permisos efectivos y acceder únicamente cuando tenga
+`nube_inicio_ver`.
+
+### Estado de implementación — 24 de julio de 2026
+
+Completado y verificado:
+
+- Cliente tipado para todos los endpoints documentados del API de accesos.
+- Login responsive basado en los estados de la sección `32:2` de Figma.
+- Token Bearer almacenado exclusivamente en la sesión del servidor.
+- Sincronización transaccional de departamento, usuario, roles y permisos.
+- Reemplazo exacto de permisos del usuario sin borrar el catálogo compartido.
+- Validación obligatoria de `nube_inicio_ver`.
+- Middleware con revalidación periódica mediante `/api/auth/me`.
+- Logout central y local, recuperación de contraseña y auditoría de acceso.
+- Estados de credenciales inválidas, cuenta inactiva, falta de permiso,
+  validación, conexión y carga.
+- Pruebas Feature de login, sincronización, permiso faltante, token vencido,
+  API no disponible y logout.
 
 ---
 
@@ -595,7 +747,9 @@ public
 
 - Implementar selector de clasificación durante la carga.
 - Implementar cambio de visibilidad.
-- Verificar permiso `nube.archivos.publicar`.
+- Verificar el permiso de publicación correspondiente al recurso:
+  `nube_mis_archivos_publicar`, `nube_departamento_publicar` o
+  `nube_publicos_publicar`.
 - Crear filtros por visibilidad.
 - Limitar consultas colaborativas al departamento actual.
 - Separar rutas físicas por visibilidad.

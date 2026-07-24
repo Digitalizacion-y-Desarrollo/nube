@@ -8,6 +8,7 @@ archivos privados, colaborativos y públicos internos.
 
 Antes de implementar cambios, consulta como fuentes de verdad:
 
+- `ESTADO_DESARROLLO.md`
 - `Propuesta_MVP_Nube_Municipal.md`
 - `Plan_de_Desarrollo_por_Fases_Nube_Municipal.md`
 - `Base_de_Datos_Nube_Municipal.md`
@@ -15,6 +16,9 @@ Antes de implementar cambios, consulta como fuentes de verdad:
 Si existe una contradicción, prioriza el modelo detallado de
 `Base_de_Datos_Nube_Municipal.md` para datos, el plan por fases para el orden
 de implementación y la propuesta para el alcance general del MVP.
+
+`ESTADO_DESARROLLO.md` es la bitácora de continuidad: debe actualizarse al
+final de cada sesión y define el punto exacto desde el cual retomar.
 
 ## Tecnologías obligatorias
 
@@ -44,20 +48,25 @@ trabajo.
 - Implementar login, consulta de usuario, logout y recuperación mediante el API.
 - Sincronizar en cada login el usuario autenticado, su departamento, roles y
   permisos.
-- Verificar el permiso `nube.acceder`.
+- Verificar el permiso `nube_inicio_ver`.
 - Manejar explícitamente respuestas 401, 403, 404, 422, 500, timeouts y API no
   disponible.
 
-Permisos contemplados:
+El sistema de accesos es la única fuente oficial del catálogo de permisos. El
+API devuelve una lista plana de claves globalmente únicas, prefijadas por
+recurso y escritas con guion bajo. El catálogo operativo de 28 permisos está
+definido en la Fase 3 de `Plan_de_Desarrollo_por_Fases_Nube_Municipal.md`.
 
-```text
-nube.acceder
-nube.archivos.subir
-nube.archivos.descargar
-nube.archivos.eliminar
-nube.archivos.publicar
-nube.administrar
-```
+- Los roles son informativos y nunca autorizan acciones por sí solos.
+- Autorizar exclusivamente con los permisos efectivos del usuario.
+- Crear o actualizar localmente cada permiso conforme sea recibido del API.
+- Sincronizar exactamente `user_permissions` y retirar de ese usuario los
+  permisos que el API deje de devolver.
+- No mantener un catálogo fijo en seeders de producción.
+- No eliminar globalmente un permiso durante el login, porque puede pertenecer
+  a otros usuarios.
+- Combinar permisos con Policies para comprobar propietario, departamento,
+  visibilidad y estado del recurso.
 
 ## Modelo de datos
 

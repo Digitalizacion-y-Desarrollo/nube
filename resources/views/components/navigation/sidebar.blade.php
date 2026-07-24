@@ -42,13 +42,19 @@
     </div>
 
     <div>
-        <button type="button" class="flex w-full items-center gap-3 rounded-xl p-1 text-left transition hover:bg-black/[0.03]">
+        <div class="flex w-full items-center gap-3 rounded-xl p-1 text-left">
             <img src="{{ $user['avatar'] ?? asset('assets/figma/avatar.png') }}" alt="" width="40" height="40" class="size-10 rounded-full object-cover">
-            <span class="min-w-0">
+            <span class="min-w-0 flex-1">
                 <span class="block truncate text-sm font-semibold">{{ $user['name'] ?? 'Carlos Martínez' }}</span>
                 <span class="block truncate text-xs text-muted">{{ $user['department'] ?? 'Recursos Humanos' }}</span>
             </span>
-        </button>
+            <form action="{{ route('logout') }}" method="POST">
+                @csrf
+                <button type="submit" class="rounded-lg px-2 py-1 text-[11px] font-semibold text-brand hover:bg-brand/10 dark:text-white" title="Cerrar sesión">
+                    Salir
+                </button>
+            </form>
+        </div>
     </div>
 </aside>
 
@@ -62,7 +68,7 @@
             </div>
             <button type="button" data-sidebar-close class="rounded-full p-2 text-xl text-muted" aria-label="Cerrar">×</button>
         </div>
-        <nav aria-label="Navegación móvil" class="space-y-1">
+        <nav aria-label="Navegación móvil" class="flex-1 space-y-1">
             @foreach ($items as $item)
                 <a href="{{ route('dashboard') }}" @class([
                     'flex items-center gap-3 rounded-lg px-4 py-3 text-sm',
@@ -74,5 +80,9 @@
                 </a>
             @endforeach
         </nav>
+        <form action="{{ route('logout') }}" method="POST" class="border-t border-line pt-4">
+            @csrf
+            <button type="submit" class="w-full rounded-lg border border-brand px-4 py-3 text-sm font-semibold text-brand dark:text-white">Cerrar sesión</button>
+        </form>
     </aside>
 </div>

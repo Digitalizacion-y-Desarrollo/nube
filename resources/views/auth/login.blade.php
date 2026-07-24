@@ -1,40 +1,37 @@
 <x-layouts.auth title="Iniciar sesión">
-    <main class="grid min-h-screen lg:grid-cols-2">
-        <section class="login-brand-panel relative hidden min-h-screen overflow-hidden p-16 text-white lg:flex lg:flex-col lg:justify-between">
-            <img
-                src="{{ asset('assets/figma/login-circle-1.svg') }}"
-                alt=""
-                width="360"
-                height="360"
-                class="pointer-events-none absolute -right-[120px] top-[120px] size-[360px]"
-            >
-            <img
-                src="{{ asset('assets/figma/login-circle-2.svg') }}"
-                alt=""
-                width="420"
-                height="420"
-                class="pointer-events-none absolute -bottom-[120px] -left-[140px] size-[420px]"
-            >
+    <main class="min-h-screen bg-white lg:grid lg:grid-cols-2">
+        <section class="login-brand-panel relative flex h-[324px] overflow-hidden px-6 py-3 text-white lg:min-h-screen lg:h-auto lg:flex-col lg:justify-between lg:p-16">
+            <img src="{{ asset('assets/figma/login-circle-1.svg') }}" alt="" class="pointer-events-none absolute -right-[30px] -top-10 size-[180px] lg:-right-[120px] lg:top-[120px] lg:size-[360px]">
+            <img src="{{ asset('assets/figma/login-circle-2.svg') }}" alt="" class="pointer-events-none absolute -bottom-9 -left-[60px] size-[200px] lg:-bottom-[120px] lg:-left-[140px] lg:size-[420px]">
 
             <img
                 src="{{ asset('assets/figma/logo-nezahualcoyotl.png') }}"
                 alt="Escudo del H. Ayuntamiento de Nezahualcóyotl"
                 width="120"
                 height="90"
-                class="relative z-10 h-[90px] w-[120px] object-cover"
+                class="relative z-10 h-[60px] w-20 object-cover lg:h-[90px] lg:w-[120px]"
             >
 
-            <div class="relative z-10 inline-flex w-fit items-center gap-2.5 rounded-[10px] border border-gold bg-white/[0.08] px-3.5 py-2.5">
-                <x-ui.icon name="shield" :size="18" alt="" />
-                <span class="text-xs font-extrabold uppercase">Gobierno Municipal de Nezahualcóyotl</span>
+            <div class="absolute left-6 right-6 top-[97px] z-10 flex items-center justify-between lg:static lg:block">
+                <div class="inline-flex items-center gap-2 rounded-[10px] border border-gold bg-white/[0.08] px-3 py-2 lg:px-3.5 lg:py-2.5">
+                    <x-ui.icon name="shield" :size="16" alt="" />
+                    <span class="text-[10px] font-extrabold uppercase lg:text-xs">Gobierno Municipal<span class="hidden lg:inline"> de Nezahualcóyotl</span></span>
+                </div>
+                <span class="inline-flex items-center gap-1.5 rounded-full border border-gold bg-gold/15 px-2 py-1 text-[9px] font-bold lg:hidden">
+                    <x-ui.icon name="folder-lock" :size="12" alt="" />
+                    SISTEMA SEGURO
+                </span>
             </div>
 
-            <div class="relative z-10 max-w-[592px]">
-                <p class="mb-2.5 text-sm font-bold uppercase text-gold">H. Ayuntamiento</p>
-                <h1 class="text-[44px] font-bold leading-[1.1]">Nube Municipal</h1>
-                <p class="mt-2.5 text-base leading-6 text-white/70">Sistema interno de gestión y almacenamiento de archivos</p>
+            <div class="absolute left-6 right-6 top-[157px] z-10 lg:static lg:max-w-[592px]">
+                <div class="mb-2 flex items-center gap-2 lg:block">
+                    <span class="flex size-6 items-center justify-center rounded bg-white/10 text-[10px] font-extrabold text-gold lg:hidden">NE</span>
+                    <p class="text-[11px] font-bold uppercase text-gold lg:mb-2.5 lg:text-sm">H. Ayuntamiento</p>
+                </div>
+                <h1 class="text-[28px] font-bold leading-[1.1] lg:text-[44px]">Nube Empresarial</h1>
+                <p class="mt-2 text-[13px] leading-[1.4] text-white/70 lg:mt-2.5 lg:text-base lg:leading-6">Sistema interno de gestión y almacenamiento de archivos<span class="lg:hidden"> oficiales.</span></p>
 
-                <article class="mt-5 rounded-[20px] border border-white/15 bg-white/[0.05] p-6 backdrop-blur-xl">
+                <article class="mt-5 hidden rounded-[20px] border border-white/15 bg-white/[0.05] p-6 backdrop-blur-xl lg:block">
                     <div class="mb-3 flex items-center gap-3">
                         <span class="flex size-10 items-center justify-center rounded-xl bg-white/[0.08]">
                             <x-ui.icon name="folder-lock" :size="20" alt="" />
@@ -43,37 +40,39 @@
                     </div>
                     <h2 class="text-base font-bold">Infraestructura Nube Gob</h2>
                     <p class="mt-2 text-[13px] leading-5 text-white/70">Resguardo digital de expedientes oficiales con cifrado avanzado de grado gubernamental.</p>
-                    <img src="{{ asset('assets/figma/login-line.svg') }}" alt="" width="544" height="1" class="mt-3 h-px w-full">
+                    <img src="{{ asset('assets/figma/login-line.svg') }}" alt="" class="mt-3 h-px w-full">
                 </article>
             </div>
 
-            <div class="relative z-10 flex items-center gap-3 text-[11px] font-semibold text-white/50">
+            <div class="relative z-10 hidden items-center gap-3 text-[11px] font-semibold text-white/50 lg:flex">
                 <span>Dirección de Tecnologías de la Información</span>
                 <span class="size-1 rounded-sm bg-gold"></span>
                 <span class="text-gold">México</span>
             </div>
         </section>
 
-        <section class="relative flex min-h-screen flex-col items-center justify-between bg-surface px-5 py-8 sm:px-12 lg:px-20 lg:py-12">
-            <div class="absolute right-5 top-5 sm:right-8 sm:top-8">
-                <x-ui.theme-toggle />
-            </div>
-
-            <div class="flex items-center gap-2">
+        <section class="relative flex min-h-[520px] flex-col items-center bg-white px-6 py-6 lg:min-h-screen lg:justify-between lg:px-20 lg:py-12">
+            <div class="hidden items-center gap-2 lg:flex">
                 <span class="flex size-8 items-center justify-center rounded-md bg-brand text-sm font-extrabold text-gold">NE</span>
-                <span class="text-xs font-bold text-muted">NUBE MUNICIPAL</span>
+                <span class="text-xs font-bold text-[#4b5563]">NUBE EMPRESARIAL</span>
             </div>
 
-            <form action="{{ route('login.store') }}" method="POST" class="my-10 w-full max-w-[560px] lg:my-0" novalidate>
+            <form action="{{ route('login.store') }}" method="POST" class="w-full max-w-[560px] lg:my-auto" novalidate data-login-form>
                 @csrf
 
-                <div class="mb-6">
-                    <h2 class="text-2xl font-bold leading-tight text-brand dark:text-white">Iniciar Sesión</h2>
-                    <p class="mt-1.5 text-sm leading-5 text-muted">Accede a tu espacio seguro de archivos</p>
+                <div class="mb-5 lg:mb-6">
+                    <h2 class="text-2xl font-bold leading-tight text-brand">Iniciar Sesión</h2>
+                    <p class="mt-1 text-sm leading-5 text-[#4b5563]">Accede a tu espacio seguro de archivos</p>
                 </div>
 
+                @if (session('status'))
+                    <x-ui.alert tone="success" class="mb-4">{{ session('status') }}</x-ui.alert>
+                @endif
+
                 @if (session('auth_error'))
-                    <x-ui.alert class="mb-4">{{ session('auth_error') }}</x-ui.alert>
+                    <x-ui.alert :tone="session('auth_error_type') === 'permission' || session('auth_error_type') === 'inactive' ? 'info' : 'error'" class="mb-4">
+                        {{ session('auth_error') }}
+                    </x-ui.alert>
                 @endif
 
                 <div class="space-y-4">
@@ -102,38 +101,43 @@
                         required
                     >
                         <x-slot:suffix>
-                            <button type="button" data-password-toggle class="absolute inset-y-0 right-3.5 flex items-center" aria-label="Mostrar contraseña" aria-pressed="false">
+                            <button type="button" data-password-toggle class="absolute inset-y-0 right-3.5 flex items-center text-[#6b7280]" aria-label="Mostrar contraseña" aria-pressed="false">
                                 <x-ui.icon name="eye" :size="18" alt="" />
                             </button>
                         </x-slot:suffix>
                     </x-ui.input>
                 </div>
 
-                <label class="mt-6 flex w-fit cursor-pointer items-center gap-2 text-[13px] text-muted">
-                    <input
-                        type="checkbox"
-                        name="remember"
-                        value="1"
-                        @checked(old('remember'))
-                        class="size-[18px] rounded border-[1.5px] border-brand text-brand accent-brand focus:ring-brand"
-                    >
+                <label class="mt-5 flex w-fit cursor-pointer items-center gap-2 text-[13px] text-[#4b5563] lg:mt-6">
+                    <input type="checkbox" name="remember" value="1" @checked(old('remember')) class="size-[18px] rounded border-[1.5px] border-brand accent-brand focus:ring-brand">
                     <span>Mantener mi sesión iniciada</span>
                 </label>
 
-                <x-ui.button type="submit" class="mt-6 h-12 w-full">Iniciar Sesión</x-ui.button>
+                @if (session('auth_error_type') === 'connection')
+                    <div class="mt-5 grid grid-cols-2 gap-3 lg:mt-6">
+                        <button type="button" onclick="window.location.reload()" class="h-12 rounded-lg border border-brand text-sm font-semibold text-brand">Reintentar</button>
+                        <x-ui.button type="submit" class="h-12 w-full" data-login-submit>
+                            <span data-login-label>Iniciar Sesión</span>
+                        </x-ui.button>
+                    </div>
+                @else
+                    <x-ui.button type="submit" class="mt-5 h-12 w-full lg:mt-6" data-login-submit>
+                        <span data-login-label>Iniciar Sesión</span>
+                    </x-ui.button>
+                @endif
 
-                <a href="https://accesos.digitalneza.com" class="mt-4 block text-center text-xs font-semibold text-brand hover:underline dark:text-white">
+                <a href="{{ route('password.request') }}" class="mt-4 block text-center text-xs font-semibold text-brand hover:underline">
                     ¿Olvidaste tu contraseña?
                 </a>
             </form>
 
-            <footer class="flex w-full max-w-[560px] flex-col items-center gap-4 text-center text-muted">
+            <footer class="mt-8 flex w-full max-w-[560px] flex-col items-center gap-3 border-t border-line pt-4 text-center text-[#9ca3af] lg:mt-0 lg:gap-4 lg:border-0 lg:pt-0">
                 <div class="flex items-center gap-1.5 text-xs">
                     <x-ui.icon name="lock" :size="14" alt="" />
                     <span>Conexión segura • SSL/TLS</span>
                 </div>
                 <div class="space-y-1">
-                    <p class="text-[11px]">Nube Municipal v1.0.0</p>
+                    <p class="text-[11px]">Nube Empresarial v1.0.0</p>
                     <p class="text-[10px]">Uso exclusivo para personal autorizado del H. Ayuntamiento de Nezahualcóyotl</p>
                 </div>
             </footer>

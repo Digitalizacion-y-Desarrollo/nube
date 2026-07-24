@@ -2,17 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $authenticatedUser = $request->user();
+        $fullName = trim(implode(' ', array_filter([
+            $authenticatedUser?->name,
+            $authenticatedUser?->last_name,
+        ])));
+
         return view('dashboard', [
             'user' => [
-                'name' => 'Carlos Martínez',
-                'first_name' => 'Carlos',
-                'department' => 'Recursos Humanos',
+                'name' => $fullName,
+                'first_name' => $authenticatedUser?->name,
+                'department' => $authenticatedUser?->department?->name ?? 'Sin departamento',
                 'avatar' => asset('assets/figma/avatar.png'),
             ],
             'indicators' => [

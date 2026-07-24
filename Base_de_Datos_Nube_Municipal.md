@@ -169,16 +169,20 @@ Catálogo local de permisos sincronizados desde el sistema de accesos.
 | `created_at` | `TIMESTAMP` | NOT NULL | Fecha de creación |
 | `updated_at` | `TIMESTAMP` | NOT NULL | Fecha de actualización |
 
-Ejemplos de permisos:
+Ejemplos de permisos efectivos sincronizados:
 
 ```text
-nube.acceder
-nube.archivos.subir
-nube.archivos.descargar
-nube.archivos.eliminar
-nube.archivos.publicar
-nube.administrar
+nube_inicio_ver
+nube_mis_archivos_subir
+nube_departamento_descargar
+nube_publicos_publicar
+nube_papelera_restaurar
+nube_administracion_administrar
 ```
+
+El catálogo completo se administra en el sistema de accesos. Nube Municipal
+crea o actualiza la copia local conforme recibe permisos durante la
+autenticación; no utiliza un seeder de producción con un catálogo fijo.
 
 ---
 
@@ -482,10 +486,15 @@ Cada vez que un usuario inicie sesión correctamente, Laravel deberá:
 2. Crear o actualizar su registro local de usuario.
 3. Crear o actualizar los roles recibidos.
 4. Sincronizar la tabla `user_roles`.
-5. Crear o actualizar los permisos recibidos.
-6. Sincronizar la tabla `user_permissions`.
+5. Crear o actualizar dinámicamente los permisos efectivos recibidos.
+6. Sincronizar `user_permissions` con la lista exacta del usuario.
 7. Actualizar `last_login_at`.
 8. Actualizar `last_synced_at`.
+
+Los roles se conservan como información de perfil y auditoría. La autorización
+se realiza exclusivamente con los permisos efectivos. Al sincronizar un
+usuario se retiran sus asignaciones obsoletas, pero no se eliminan globalmente
+registros de `permissions` que puedan estar asignados a otras personas.
 
 No se actualizarán todos los usuarios en cada inicio de sesión. Solo se sincronizarán los datos relacionados con el usuario autenticado.
 
