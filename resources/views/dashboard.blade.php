@@ -1,4 +1,4 @@
-<x-layouts.app title="Inicio" :user="$user">
+<x-layouts.app title="Inicio" :user="$user" :permissions="$permissions">
     <section class="mb-5 lg:mb-6">
         <h2 class="text-[22px] font-bold text-brand dark:text-white lg:text-[28px] lg:text-ink lg:dark:text-white">Buenos días, {{ $user['first_name'] }}</h2>
         <div class="mt-1 flex flex-wrap items-center gap-2 text-xs lg:text-sm">
@@ -26,21 +26,25 @@
                 <x-ui.icon name="folder-plus" :size="18" alt="" class="hidden lg:block" />
                 <span>Nueva carpeta</span>
             </x-ui.button>
-            <x-ui.button variant="outline" class="h-12 justify-start px-3 lg:h-auto lg:justify-center lg:border-line lg:bg-surface lg:px-5 lg:text-ink">
-                <span class="flex size-7 items-center justify-center rounded-md bg-brand lg:hidden">
-                    <x-ui.icon name="folder-mobile" :size="16" alt="" />
-                </span>
-                <x-ui.icon name="folder" :size="18" alt="" class="hidden lg:block" />
-                <span>Mis archivos</span>
-            </x-ui.button>
-            <x-ui.button variant="outline" class="h-12 justify-start px-3 lg:h-auto lg:justify-center lg:border-line lg:bg-surface lg:px-5 lg:text-ink">
-                <span class="flex size-7 items-center justify-center rounded-md bg-brand lg:hidden">
-                    <x-ui.icon name="users-mobile" :size="16" alt="" />
-                </span>
-                <x-ui.icon name="building" :size="18" alt="" class="hidden lg:block" />
-                <span class="lg:hidden">Departamento</span>
-                <span class="hidden lg:inline">Archivos del departamento</span>
-            </x-ui.button>
+            @if (in_array('nube_mis_archivos_ver', $permissions, true) || in_array('nube_administracion_administrar', $permissions, true))
+                <a href="{{ route('folders.mine') }}" class="inline-flex h-12 items-center justify-start gap-2 rounded-[10px] border border-gold bg-warm px-3 text-sm font-semibold text-brand transition hover:bg-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold dark:text-white lg:h-auto lg:justify-center lg:border-line lg:bg-surface lg:px-5 lg:py-2.5 lg:text-ink">
+                    <span class="flex size-7 items-center justify-center rounded-md bg-brand lg:hidden">
+                        <x-ui.icon name="folder-mobile" :size="16" alt="" />
+                    </span>
+                    <x-ui.icon name="folder" :size="18" alt="" class="hidden lg:block" />
+                    <span>Mis archivos</span>
+                </a>
+            @endif
+            @if (in_array('nube_departamento_ver', $permissions, true) || in_array('nube_administracion_administrar', $permissions, true))
+                <a href="{{ route('folders.department') }}" class="inline-flex h-12 items-center justify-start gap-2 rounded-[10px] border border-gold bg-warm px-3 text-sm font-semibold text-brand transition hover:bg-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold dark:text-white lg:h-auto lg:justify-center lg:border-line lg:bg-surface lg:px-5 lg:py-2.5 lg:text-ink">
+                    <span class="flex size-7 items-center justify-center rounded-md bg-brand lg:hidden">
+                        <x-ui.icon name="users-mobile" :size="16" alt="" />
+                    </span>
+                    <x-ui.icon name="building" :size="18" alt="" class="hidden lg:block" />
+                    <span class="lg:hidden">Departamento</span>
+                    <span class="hidden lg:inline">Archivos del departamento</span>
+                </a>
+            @endif
         </div>
     </section>
 
@@ -64,7 +68,9 @@
     <section aria-labelledby="recent-files-title" class="mb-5 lg:mb-6">
         <div class="mb-3 flex items-center justify-between lg:mb-0 lg:rounded-t-xl lg:border lg:border-line lg:bg-surface lg:p-5">
             <h3 id="recent-files-title" class="text-sm font-bold uppercase text-ink lg:text-[15px] lg:normal-case">Archivos Recientes</h3>
-            <a href="#" class="text-xs font-semibold text-gold underline-offset-4 hover:underline lg:text-[13px]">Ver todos</a>
+            @if (in_array('nube_mis_archivos_ver', $permissions, true) || in_array('nube_administracion_administrar', $permissions, true))
+                <a href="{{ route('folders.mine') }}" class="text-xs font-semibold text-gold underline-offset-4 hover:underline lg:text-[13px]">Ver todos</a>
+            @endif
         </div>
 
         <div class="space-y-2 lg:hidden">

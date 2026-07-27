@@ -108,7 +108,78 @@ ACCESS_API_URL=https://accesos.digitalneza.com
 ACCESS_SYSTEM_KEY=
 ACCESS_TIMEOUT=10
 ACCESS_SESSION_CHECK_INTERVAL=300
+NUBE_MAX_FILE_SIZE_KB=204800
+NUBE_TRASH_RETENTION_DAYS=30
 ```
+
+Para permitir archivos de hasta 200 MB, el servidor también debe usar:
+
+```ini
+upload_max_filesize = 200M
+post_max_size = 210M
+```
+
+En Nginx configura `client_max_body_size 210M`. Apache no requiere un límite
+adicional cuando `LimitRequestBody` permanece en `0`; si se define, debe ser de
+al menos 209715200 bytes. Después de modificar PHP o el servidor web, reinicia
+el servicio correspondiente.
+
+## Papelera y auditoría
+
+Los archivos permanecen 30 días en Papelera de forma predeterminada. El plazo
+puede cambiarse con `NUBE_TRASH_RETENTION_DAYS`. Cada archivo puede eliminarse
+manualmente de forma permanente después de una confirmación SweetAlert2.
+
+La purga automática está registrada en el scheduler de Laravel a las 02:00:
+
+```bash
+php artisan files:purge-trash
+```
+
+En producción debe ejecutarse el scheduler de Laravel cada minuto:
+
+```cron
+* * * * * cd /ruta/a/nube && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Las creaciones, modificaciones, eliminaciones, restauraciones y purgas de
+archivos se registran internamente en `audit_logs`. Las ejecuciones del sistema
+quedan con `user_id` nulo y las acciones de usuarios conservan su actor.
+
+## Clasificación y acceso
+
+Las carpetas y los archivos pueden crearse como privados, colaborativos o
+públicos internos. Los recursos colaborativos pueden compartirse con todo el
+departamento o con una selección de personas activas del mismo departamento.
+La selección consulta `GET /api/integrations/users` con el token de la sesión y
+filtra la respuesta por el departamento del usuario autenticado. Si el servicio
+no está disponible, el formulario muestra el error y permite reintentar sin
+usar silenciosamente información local desactualizada.
+Los archivos y las carpetas pueden reclasificarse sin alterar la visibilidad
+independiente de su contenido. Estos cambios generan los eventos
+`file.visibility_changed` y `folder.visibility_changed`, respectivamente.
+
+- Privado: acceso exclusivo del propietario.
+- Colaborativo: lectura y descarga dentro del mismo departamento; modificación
+  exclusiva del propietario. Puede limitarse a colaboradores seleccionados.
+- Público interno: lectura y descarga con los permisos públicos; modificación
+  por el propietario o un administrador.
+
+Las operaciones utilizan los permisos del recurso correspondiente, por ejemplo
+`nube_departamento_descargar`, `nube_publicos_descargar` y los permisos
+`*_publicar` para cambiar la clasificación.
+
+La clasificación del contenedor no se hereda: una carpeta pública puede
+contener archivos públicos, colaborativos o privados. Cada elemento conserva
+su propia Policy y nunca se vuelve visible únicamente por estar dentro de una
+carpeta pública.
+
+Si el creador cambia de departamento, conserva sus archivos y carpetas
+privados, pero pierde acceso al contenido colaborativo del área anterior. El
+recurso mantiene su `department_id` y su ruta física originales, y el área
+nueva no obtiene acceso automático. Un usuario del área propietaria con rol
+exacto `admin_area` puede administrar ese contenido cuando también cuenta con
+el permiso funcional requerido para la acción.
 
 `ACCESS_SYSTEM_KEY` debe configurarse localmente o mediante el administrador de
 secretos del entorno. Nunca debe escribirse en el código, documentación,

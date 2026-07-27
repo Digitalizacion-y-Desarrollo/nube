@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureAccessPermission;
 use App\Http\Middleware\EnsureAccessSession;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -13,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'access.permission' => EnsureAccessPermission::class,
             'access.session' => EnsureAccessSession::class,
         ]);
     })

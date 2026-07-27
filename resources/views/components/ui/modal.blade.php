@@ -6,7 +6,7 @@
 <div
     id="{{ $id }}"
     data-modal
-    class="fixed inset-0 z-50 hidden items-center justify-center bg-[#1f1f24]/45 p-4 backdrop-blur-sm"
+    {{ $attributes->class('fixed inset-0 z-50 hidden items-center justify-center bg-[#1f1f24]/45 p-4 backdrop-blur-sm') }}
     role="dialog"
     aria-modal="true"
     aria-labelledby="{{ $id }}-title"

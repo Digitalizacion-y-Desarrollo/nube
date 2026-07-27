@@ -1,17 +1,24 @@
 @props([
     'user' => [],
+    'permissions' => [],
 ])
 
 @php
     $items = [
-        ['label' => 'Inicio', 'icon' => 'home', 'active' => true],
-        ['label' => 'Mis Archivos', 'icon' => 'folder-open'],
-        ['label' => 'Compartidos', 'icon' => 'users'],
-        ['label' => 'Departamento', 'icon' => 'building'],
-        ['label' => 'Público Interno', 'icon' => 'globe'],
-        ['label' => 'Recientes', 'icon' => 'clock'],
-        ['label' => 'Papelera', 'icon' => 'trash'],
+        ['label' => 'Inicio', 'icon' => 'home', 'route' => 'dashboard', 'permission' => null],
+        ['label' => 'Mis Archivos', 'icon' => 'folder-open', 'route' => 'folders.mine', 'pattern' => 'folders.mine*', 'permission' => 'nube_mis_archivos_ver'],
+        ['label' => 'Mi departamento', 'icon' => 'building', 'route' => 'folders.department', 'pattern' => 'folders.department*', 'permission' => 'nube_departamento_ver'],
+        ['label' => 'Públicos', 'icon' => 'globe', 'route' => 'folders.public', 'pattern' => 'folders.public*', 'permission' => 'nube_publicos_ver'],
+        ['label' => 'Papelera', 'icon' => 'trash', 'route' => 'folders.trash', 'permission' => 'nube_papelera_ver'],
     ];
+
+    $isAdministrator = in_array('nube_administracion_administrar', $permissions, true);
+    $items = array_filter(
+        $items,
+        fn (array $item): bool => $item['permission'] === null
+            || $isAdministrator
+            || in_array($item['permission'], $permissions, true),
+    );
 @endphp
 
 <aside class="glass-shell sticky top-0 hidden h-screen w-[280px] shrink-0 flex-col justify-between border-r border-line/70 px-5 py-6 lg:flex">
@@ -27,12 +34,13 @@
         <nav aria-label="Navegación principal" class="space-y-1">
             @foreach ($items as $item)
                 <a
-                    href="{{ route('dashboard') }}"
+                    href="{{ route($item['route']) }}"
                     @class([
                         'flex items-center gap-3 rounded-lg px-4 py-3 text-sm transition',
-                        'bg-brand font-semibold text-white shadow-sm' => $item['active'] ?? false,
-                        'font-medium text-ink hover:bg-brand/10 hover:text-brand dark:hover:text-white' => ! ($item['active'] ?? false),
+                        'bg-brand font-semibold text-white shadow-sm' => request()->routeIs($item['pattern'] ?? $item['route']),
+                        'font-medium text-ink hover:bg-brand/10 hover:text-brand dark:hover:text-white' => ! request()->routeIs($item['pattern'] ?? $item['route']),
                     ])
+                    @if (request()->routeIs($item['pattern'] ?? $item['route'])) aria-current="page" @endif
                 >
                     <x-ui.icon :name="$item['icon']" :size="20" alt="" />
                     <span>{{ $item['label'] }}</span>
@@ -70,11 +78,11 @@
         </div>
         <nav aria-label="Navegación móvil" class="flex-1 space-y-1">
             @foreach ($items as $item)
-                <a href="{{ route('dashboard') }}" @class([
+                <a href="{{ route($item['route']) }}" @class([
                     'flex items-center gap-3 rounded-lg px-4 py-3 text-sm',
-                    'bg-brand font-semibold text-white' => $item['active'] ?? false,
-                    'font-medium text-ink' => ! ($item['active'] ?? false),
-                ])>
+                    'bg-brand font-semibold text-white' => request()->routeIs($item['pattern'] ?? $item['route']),
+                    'font-medium text-ink' => ! request()->routeIs($item['pattern'] ?? $item['route']),
+                ]) @if (request()->routeIs($item['pattern'] ?? $item['route'])) aria-current="page" @endif>
                     <x-ui.icon :name="$item['icon']" :size="20" alt="" />
                     <span>{{ $item['label'] }}</span>
                 </a>

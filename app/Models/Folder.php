@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\CollaborationScope;
 use App\Enums\FileVisibility;
 use Database\Factories\FolderFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -22,6 +24,7 @@ class Folder extends Model
         'department_id',
         'name',
         'visibility',
+        'collaboration_scope',
         'path_cache',
     ];
 
@@ -29,6 +32,7 @@ class Folder extends Model
     {
         return [
             'visibility' => FileVisibility::class,
+            'collaboration_scope' => CollaborationScope::class,
         ];
     }
 
@@ -55,5 +59,11 @@ class Folder extends Model
     public function files(): HasMany
     {
         return $this->hasMany(File::class);
+    }
+
+    public function collaborators(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'folder_collaborators')
+            ->withPivot('created_at');
     }
 }

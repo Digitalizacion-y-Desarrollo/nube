@@ -16,8 +16,14 @@ class DemoPermissionSeederTest extends TestCase
         $this->seed(DemoPermissionSeeder::class);
         $this->seed(DemoPermissionSeeder::class);
 
-        $this->assertSame(5, Permission::query()->count());
+        $this->assertSame(27, Permission::query()->count());
         $this->assertDatabaseHas('permissions', ['name' => 'nube_inicio_ver']);
+        $this->assertDatabaseHas('permissions', ['name' => 'nube_departamento_ver']);
+        $this->assertDatabaseHas('permissions', ['name' => 'nube_publicos_ver']);
+        $this->assertDatabaseHas('permissions', ['name' => 'nube_mis_archivos_publicar']);
+        $this->assertDatabaseHas('permissions', ['name' => 'nube_departamento_descargar']);
+        $this->assertDatabaseHas('permissions', ['name' => 'nube_publicos_publicar']);
+        $this->assertDatabaseHas('permissions', ['name' => 'nube_papelera_ver']);
         $this->assertDatabaseMissing('permissions', [
             'name' => 'nube_administracion_administrar',
         ]);

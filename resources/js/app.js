@@ -1,4 +1,6 @@
 import './bootstrap';
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
 
 const themePreference = {
     get() {
@@ -90,6 +92,16 @@ document.addEventListener('click', (event) => {
 
 document.addEventListener('DOMContentLoaded', syncThemeControls);
 
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.querySelector('[data-modal-auto-open]');
+
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+    }
+});
+
 document.querySelectorAll('[data-login-form]').forEach((form) => {
     form.addEventListener('submit', () => {
         const button = form.querySelector('[data-login-submit]');
@@ -102,6 +114,69 @@ document.querySelectorAll('[data-login-form]').forEach((form) => {
         button.disabled = true;
         button.classList.add('opacity-70', 'cursor-wait');
         label.textContent = 'Autenticando...';
+    });
+});
+
+document.querySelectorAll('[data-sharing-form]').forEach((form) => {
+    const visibility = form.querySelector('[data-sharing-visibility]');
+    const collaborationOptions = form.querySelector('[data-collaboration-options]');
+    const collaborationScope = form.querySelector('[data-collaboration-scope]');
+    const selectedCollaborators = form.querySelector('[data-selected-collaborators]');
+
+    const syncSharingControls = () => {
+        const isCollaborative = visibility?.value === 'collaborative';
+        const isSelected = isCollaborative && collaborationScope?.value === 'selected';
+
+        collaborationOptions?.classList.toggle('hidden', !isCollaborative);
+        selectedCollaborators?.classList.toggle('hidden', !isSelected);
+
+        collaborationOptions?.querySelectorAll('select, input').forEach((input) => {
+            input.disabled = !isCollaborative
+                || (input.type === 'checkbox' && !isSelected);
+        });
+    };
+
+    visibility?.addEventListener('change', syncSharingControls);
+    collaborationScope?.addEventListener('change', syncSharingControls);
+    syncSharingControls();
+});
+
+document.querySelectorAll('[data-file-upload-form]').forEach((form) => {
+    form.addEventListener('submit', () => {
+        const button = form.querySelector('[data-file-upload-submit]');
+        const label = form.querySelector('[data-file-upload-label]');
+
+        if (!button || !label) {
+            return;
+        }
+
+        button.disabled = true;
+        button.classList.add('cursor-wait', 'opacity-70');
+        label.textContent = 'Subiendo...';
+    });
+});
+
+document.querySelectorAll('[data-permanent-delete-form]').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const fileName = form.dataset.fileName || 'este archivo';
+        const result = await Swal.fire({
+            title: '¿Eliminar permanentemente?',
+            text: `El archivo «${fileName}» no podrá recuperarse.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#b42318',
+            cancelButtonColor: '#667085',
+            reverseButtons: true,
+            focusCancel: true,
+        });
+
+        if (result.isConfirmed) {
+            HTMLFormElement.prototype.submit.call(form);
+        }
     });
 });
 

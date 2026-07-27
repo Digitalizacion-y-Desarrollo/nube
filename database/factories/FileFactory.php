@@ -33,6 +33,7 @@ class FileFactory extends Factory
             'mime_type' => $this->mimeTypeFor($extension),
             'size_bytes' => fake()->numberBetween(1_024, 10_485_760),
             'visibility' => fake()->randomElement(FileVisibility::cases()),
+            'collaboration_scope' => null,
             'checksum' => hash('sha256', $storedName),
             'uploaded_at' => fake()->dateTimeBetween('-1 month'),
         ];

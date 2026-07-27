@@ -21,6 +21,7 @@ class FolderFactory extends Factory
             'department_id' => Department::factory(),
             'name' => ucfirst(fake()->unique()->words(2, true)),
             'visibility' => fake()->randomElement(FileVisibility::cases()),
+            'collaboration_scope' => null,
             'path_cache' => null,
         ];
     }

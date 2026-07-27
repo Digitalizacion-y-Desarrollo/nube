@@ -480,7 +480,7 @@ Tipos iniciales sugeridos:
 Tamaño máximo inicial sugerido:
 
 ```text
-50 MB por archivo
+200 MB por archivo
 ```
 
 El límite deberá coincidir en Laravel, PHP y Nginx o Apache.
@@ -508,7 +508,9 @@ Secciones principales:
 - Públicos.
 - Papelera.
 
-La papelera se implementará inicialmente mediante eliminación lógica.
+La papelera usa eliminación lógica durante 30 días. Al vencer el plazo, una
+tarea diaria elimina de forma permanente el archivo físico y su registro; el
+usuario también puede adelantar esta acción mediante confirmación explícita.
 
 ---
 
@@ -544,7 +546,7 @@ Para garantizar la entrega del viernes 31 de julio, no se incluirán:
 - Edición simultánea.
 - Edición de Word, Excel o PowerPoint desde el navegador.
 - Historial de versiones.
-- Compartición individual entre usuarios.
+- Compartición con usuarios de otros departamentos.
 - Compartición entre áreas específicas.
 - Enlaces públicos externos.
 - Vista previa avanzada.

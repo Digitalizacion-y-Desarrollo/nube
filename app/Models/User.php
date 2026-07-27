@@ -66,4 +66,38 @@ class User extends Authenticatable
     {
         return $this->hasMany(AuditLog::class);
     }
+
+    public function sharedFolders(): BelongsToMany
+    {
+        return $this->belongsToMany(Folder::class, 'folder_collaborators')
+            ->withPivot('created_at');
+    }
+
+    public function sharedFiles(): BelongsToMany
+    {
+        return $this->belongsToMany(File::class, 'file_collaborators')
+            ->withPivot('created_at');
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->relationLoaded('permissions')) {
+            return $this->permissions->contains('name', $permission);
+        }
+
+        return $this->permissions()
+            ->where('name', $permission)
+            ->exists();
+    }
+
+    public function hasRole(string $role): bool
+    {
+        if ($this->relationLoaded('roles')) {
+            return $this->roles->contains('name', $role);
+        }
+
+        return $this->roles()
+            ->where('name', $role)
+            ->exists();
+    }
 }

@@ -223,6 +223,7 @@ Representa las carpetas lógicas del sistema.
 | `department_id` | `BIGINT UNSIGNED` | FK, NOT NULL | Departamento asociado |
 | `name` | `VARCHAR(150)` | NOT NULL | Nombre visible |
 | `visibility` | `VARCHAR(20)` | NOT NULL | Nivel de visibilidad |
+| `collaboration_scope` | `VARCHAR(20)` | NULL | `department` o `selected` cuando la carpeta es colaborativa |
 | `path_cache` | `VARCHAR(500)` | NULL | Ruta lógica precalculada |
 | `created_at` | `TIMESTAMP` | NOT NULL | Fecha de creación |
 | `updated_at` | `TIMESTAMP` | NOT NULL | Fecha de actualización |
@@ -275,6 +276,7 @@ Almacena los metadatos de los archivos. El archivo físico se guarda en el almac
 | `mime_type` | `VARCHAR(150)` | NULL | Tipo MIME |
 | `size_bytes` | `BIGINT UNSIGNED` | NOT NULL | Tamaño en bytes |
 | `visibility` | `VARCHAR(20)` | NOT NULL | Clasificación |
+| `collaboration_scope` | `VARCHAR(20)` | NULL | `department` o `selected` cuando el archivo es colaborativo |
 | `checksum` | `VARCHAR(64)` | NULL | Hash SHA-256 |
 | `uploaded_at` | `TIMESTAMP` | NOT NULL | Fecha real de carga |
 | `created_at` | `TIMESTAMP` | NOT NULL | Fecha de creación |
@@ -298,6 +300,29 @@ departments 1 --- N files
 ```
 
 `folder_id` puede ser nulo cuando el archivo se encuentre directamente en una raíz lógica.
+
+---
+
+### 3.8.1. Colaboradores seleccionados
+
+`folder_collaborators` y `file_collaborators` relacionan recursos colaborativos
+con personas activas del mismo departamento.
+
+```text
+folder_collaborators.folder_id -> folders.id
+folder_collaborators.user_id -> users.id
+file_collaborators.file_id -> files.id
+file_collaborators.user_id -> users.id
+```
+
+Cada tabla utiliza una llave primaria compuesta por el recurso y el usuario.
+Las relaciones solo se consultan cuando `collaboration_scope` es `selected`;
+con `department`, todas las personas autorizadas del departamento tienen
+acceso.
+
+La visibilidad de una carpeta y la de sus elementos son independientes. Una
+carpeta pública puede contener archivos públicos, privados o colaborativos sin
+que el nivel del contenedor amplíe el acceso al contenido.
 
 ---
 

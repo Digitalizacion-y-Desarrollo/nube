@@ -1,6 +1,7 @@
 @props([
     'title' => 'Inicio',
     'user' => [],
+    'permissions' => [],
 ])
 
 <!DOCTYPE html>
@@ -17,7 +18,7 @@
     </head>
     <body class="min-h-screen bg-canvas font-sans text-ink antialiased">
         <div class="min-h-screen lg:flex">
-            <x-navigation.sidebar :user="$user" />
+            <x-navigation.sidebar :user="$user" :permissions="$permissions" />
 
             <div class="min-w-0 flex-1">
                 <x-navigation.header :title="$title" :user="$user" />
@@ -27,12 +28,20 @@
             </div>
         </div>
 
-        <x-navigation.mobile-nav />
-        <x-ui.modal id="upload-modal" title="Subir archivo">
-            <p class="text-sm leading-6 text-muted">El flujo de carga se conectará durante el Épico 5. La interfaz base ya está preparada.</p>
-        </x-ui.modal>
-        <x-ui.modal id="folder-modal" title="Nueva carpeta">
-            <p class="text-sm leading-6 text-muted">La creación de carpetas se conectará durante el Épico 4.</p>
-        </x-ui.modal>
+        <x-navigation.mobile-nav :permissions="$permissions" />
+        @if (isset($uploadModal))
+            {{ $uploadModal }}
+        @else
+            <x-ui.modal id="upload-modal" title="Subir archivo">
+                <p class="text-sm leading-6 text-muted">Abre la sección Mis archivos para cargar documentos privados.</p>
+            </x-ui.modal>
+        @endif
+        @if (isset($folderModal))
+            {{ $folderModal }}
+        @else
+            <x-ui.modal id="folder-modal" title="Nueva carpeta">
+                <p class="text-sm leading-6 text-muted">Abre la sección Mis archivos para crear y organizar carpetas privadas.</p>
+            </x-ui.modal>
+        @endif
     </body>
 </html>

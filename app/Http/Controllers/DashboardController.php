@@ -22,6 +22,7 @@ class DashboardController extends Controller
                 'department' => $authenticatedUser?->department?->name ?? 'Sin departamento',
                 'avatar' => asset('assets/figma/avatar.png'),
             ],
+            'permissions' => $request->session()->get('access.permissions', []),
             'indicators' => [
                 ['label' => 'Archivos privados', 'value' => '47', 'hint' => 'Acceso exclusivo tuyo', 'icon' => 'lock-keyhole'],
                 ['label' => 'Archivos colaborativos', 'value' => '128', 'hint' => 'Compartidos con el equipo', 'icon' => 'users'],

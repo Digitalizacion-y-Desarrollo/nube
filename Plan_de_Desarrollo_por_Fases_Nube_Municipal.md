@@ -632,7 +632,7 @@ Implementar el ciclo completo de carga, consulta, descarga, renombrado, movimien
 Configurar inicialmente:
 
 ```text
-50 MB por archivo
+200 MB por archivo
 ```
 
 El límite debe coincidir en:
@@ -680,6 +680,9 @@ El límite debe coincidir en:
 - Evitar descargas de archivos eliminados.
 - Mostrar elementos en Papelera.
 - Permitir restauración.
+- Mostrar que los archivos se eliminan definitivamente después de 30 días.
+- Permitir eliminación permanente manual con confirmación SweetAlert2.
+- Ejecutar diariamente una purga de archivos cuyo plazo haya vencido.
 - Registrar auditoría.
 
 #### Clases principales
@@ -730,8 +733,10 @@ public
 
 ### Reglas de archivos colaborativos
 
-- Los usuarios del mismo departamento pueden visualizarlos.
-- Los usuarios del mismo departamento pueden descargarlos.
+- Pueden compartirse con todo el departamento o con personas específicas del
+  mismo departamento.
+- Solo los colaboradores incluidos por el alcance seleccionado pueden
+  visualizarlos y descargarlos.
 - Solo el propietario puede renombrarlos.
 - Solo el propietario puede eliminarlos.
 - Usuarios de otros departamentos no pueden acceder.
@@ -755,6 +760,10 @@ public
 - Separar rutas físicas por visibilidad.
 - Actualizar Policies.
 - Registrar cambios de visibilidad.
+- Crear carpetas privadas, colaborativas y públicas.
+- Permitir que la visibilidad de una carpeta y sus contenidos sea independiente.
+- Listar personas activas del mismo departamento al seleccionar colaboración
+  específica.
 
 ### Rutas conceptuales
 
@@ -1155,7 +1164,7 @@ La implementación visual puede avanzar parcialmente desde la primera fase, pero
 
 ## Fuera del MVP
 
-- Compartición individual.
+- Compartición con usuarios de otros departamentos.
 - Historial de versiones.
 - Vista previa avanzada.
 - Miniaturas.

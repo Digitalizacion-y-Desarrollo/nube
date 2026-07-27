@@ -46,6 +46,8 @@ trabajo.
 - Nunca almacenar contraseñas.
 - Guardar el token Bearer únicamente en la sesión del servidor.
 - Implementar login, consulta de usuario, logout y recuperación mediante el API.
+- Consultar `GET /api/integrations/users` para seleccionar colaboradores,
+  filtrando por el departamento del usuario autenticado.
 - Sincronizar en cada login el usuario autenticado, su departamento, roles y
   permisos.
 - Verificar el permiso `nube_inicio_ver`.
@@ -57,7 +59,10 @@ API devuelve una lista plana de claves globalmente únicas, prefijadas por
 recurso y escritas con guion bajo. El catálogo operativo de 28 permisos está
 definido en la Fase 3 de `Plan_de_Desarrollo_por_Fases_Nube_Municipal.md`.
 
-- Los roles son informativos y nunca autorizan acciones por sí solos.
+- Los roles son informativos y no sustituyen permisos. La excepción de alcance
+  `admin_area` permite administrar contenido colaborativo del propio
+  departamento únicamente cuando también existe el permiso funcional de la
+  acción.
 - Autorizar exclusivamente con los permisos efectivos del usuario.
 - Crear o actualizar localmente cada permiso conforme sea recibido del API.
 - Sincronizar exactamente `user_permissions` y retirar de ese usuario los
@@ -82,6 +87,8 @@ user_permissions
 folders
 files
 audit_logs
+folder_collaborators
+file_collaborators
 ```
 
 Convenciones:
@@ -133,9 +140,13 @@ Reglas obligatorias:
 - Mantener consistencia transaccional entre metadatos y archivo físico.
 - Eliminar el archivo físico si falla el registro en la base de datos.
 - No crear registros si falla el almacenamiento.
+- Conservar los archivos eliminados en Papelera durante 30 días y ejecutar una
+  purga permanente diaria al vencer el plazo.
+- Registrar mediante eventos internos toda creación, modificación, eliminación,
+  restauración y purga de archivos en `audit_logs`.
 
 Tipos iniciales permitidos: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV,
-JPG, JPEG, PNG y ZIP. El límite inicial es de 50 MB y debe coincidir en Laravel,
+JPG, JPEG, PNG y ZIP. El límite es de 200 MB y debe coincidir en Laravel,
 PHP y Apache o Nginx.
 
 ## Autorización
@@ -150,7 +161,10 @@ entradas. La ubicación física nunca sustituye la autorización.
   el propietario o un administrador puede modificar.
 - Publicar o cambiar visibilidad requiere el permiso correspondiente.
 - Carpetas privadas solo pueden ser modificadas por su propietario.
-- Una subcarpeta conserva la visibilidad de su carpeta padre.
+- La visibilidad de carpetas, subcarpetas y archivos es independiente.
+- Los recursos colaborativos admiten acceso para todo el departamento o para
+  una selección de personas activas del mismo departamento.
+- Una carpeta nunca amplía automáticamente el acceso a sus archivos.
 - No permitir operaciones sobre carpetas eliminadas.
 
 Aplicar CSRF, validación de UUID, protección contra asignación masiva,
@@ -166,7 +180,7 @@ Prioridad crítica:
 3. Integración con el sistema de accesos.
 4. Carpetas privadas y navegación jerárquica.
 5. Carga y descarga segura de archivos.
-6. Renombrado, movimiento, eliminación lógica y restauración.
+6. Renombrado, movimiento, Papelera de 30 días, purga y restauración.
 7. Archivos colaborativos y públicos internos.
 8. Policies, seguridad y auditoría.
 9. Interfaz Blade/Tailwind alineada con Figma.
@@ -203,6 +217,7 @@ auth.logout
 folder.created
 folder.renamed
 folder.deleted
+folder.visibility_changed
 file.uploaded
 file.downloaded
 file.renamed
@@ -233,7 +248,7 @@ críticos. Cubrir como mínimo:
 
 No implementar salvo solicitud explícita de ampliación de alcance:
 
-- Compartición individual o entre áreas específicas.
+- Compartición con personas de otros departamentos.
 - Historial de versiones.
 - Vista previa avanzada o miniaturas.
 - Antivirus.

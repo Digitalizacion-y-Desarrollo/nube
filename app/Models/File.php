@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\CollaborationScope;
 use App\Enums\FileVisibility;
 use Database\Factories\FileFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class File extends Model
@@ -28,6 +30,7 @@ class File extends Model
         'mime_type',
         'size_bytes',
         'visibility',
+        'collaboration_scope',
         'checksum',
         'uploaded_at',
     ];
@@ -37,6 +40,7 @@ class File extends Model
         return [
             'size_bytes' => 'integer',
             'visibility' => FileVisibility::class,
+            'collaboration_scope' => CollaborationScope::class,
             'uploaded_at' => 'datetime',
         ];
     }
@@ -54,5 +58,11 @@ class File extends Model
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function collaborators(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'file_collaborators')
+            ->withPivot('created_at');
     }
 }
