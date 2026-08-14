@@ -11,6 +11,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -194,6 +195,66 @@ class OwnershipAfterDepartmentChangeTest extends TestCase
         );
         $this->assertStringNotContainsString(
             "departamentos/{$newDepartment->id}/",
+            $file->path,
+        );
+        Storage::disk('nube')->assertExists($file->path);
+    }
+
+    public function test_owner_can_add_private_content_to_an_owned_folder_from_a_previous_department(): void
+    {
+        Storage::fake('nube');
+
+        $oldDepartment = Department::factory()->create();
+        $newDepartment = Department::factory()->create();
+        $owner = User::factory()->create(['department_id' => $oldDepartment->id]);
+        $folder = $this->folder($owner, FileVisibility::Private, 'Privada anterior');
+
+        $owner->update(['department_id' => $newDepartment->id]);
+
+        $response = $this->authenticated($owner, [
+            'nube_mis_archivos_ver',
+            'nube_mis_archivos_subir',
+            'nube_mis_archivos_crear_carpeta',
+        ])->get(route('folders.mine.show', $folder));
+
+        $response
+            ->assertOk()
+            ->assertSee('Agregar archivo')
+            ->assertSee('Nueva subcarpeta')
+            ->assertSee('name="folder_id"', false)
+            ->assertSee('name="parent_id"', false);
+
+        $this->assertSame(
+            2,
+            substr_count(
+                $response->getContent(),
+                'value="'.$folder->id.'" selected',
+            ),
+        );
+
+        $this->post(route('folders.store'), [
+            'name' => 'Nueva privada',
+            'parent_id' => $folder->id,
+            'visibility' => FileVisibility::Private->value,
+        ])->assertRedirect(route('folders.mine.show', $folder));
+
+        $this->post(route('files.store'), [
+            'file' => UploadedFile::fake()->create(
+                'nuevo.pdf',
+                10,
+                'application/pdf',
+            ),
+            'folder_id' => $folder->id,
+            'visibility' => FileVisibility::Private->value,
+        ])->assertRedirect();
+
+        $child = Folder::query()->where('name', 'Nueva privada')->firstOrFail();
+        $file = File::query()->where('display_name', 'nuevo.pdf')->firstOrFail();
+
+        $this->assertSame($oldDepartment->id, $child->department_id);
+        $this->assertSame($oldDepartment->id, $file->department_id);
+        $this->assertStringContainsString(
+            "departamentos/{$oldDepartment->id}/",
             $file->path,
         );
         Storage::disk('nube')->assertExists($file->path);

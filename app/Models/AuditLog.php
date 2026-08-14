@@ -32,4 +32,13 @@ class AuditLog extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Los eventos originados en el panel del superusuario usan el prefijo
+     * `admin.`; el resto proviene de la operación normal de los usuarios.
+     */
+    public function isAdministrative(): bool
+    {
+        return str_starts_with($this->action, 'admin.');
+    }
 }

@@ -138,7 +138,7 @@ class CollaborativePublicFilesTest extends TestCase
         $file = $this->storedFile($owner, FileVisibility::Private, 'clasificar.pdf', $folder);
         $oldPath = $file->path;
 
-        $this->authenticated($owner, ['nube_mis_archivos_publicar'])
+        $this->authenticated($owner, ['nube.archivos.publicar'])
             ->patch(route('files.visibility', $file), [
                 'visibility' => FileVisibility::Collaborative->value,
                 'file_context' => $file->id,

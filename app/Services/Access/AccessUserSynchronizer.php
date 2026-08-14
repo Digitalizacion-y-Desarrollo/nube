@@ -13,9 +13,13 @@ use UnexpectedValueException;
 
 class AccessUserSynchronizer
 {
-    public function synchronize(AccessAuthData $authData): User
+    /**
+     * @param  bool  $isLogin  Sólo un inicio de sesión real actualiza `last_login_at`;
+     *                         la revalidación periódica de sesión únicamente sincroniza.
+     */
+    public function synchronize(AccessAuthData $authData, bool $isLogin = false): User
     {
-        return DB::transaction(function () use ($authData): User {
+        return DB::transaction(function () use ($authData, $isLogin): User {
             $now = now();
             $department = $this->synchronizeDepartment(
                 is_array($authData->user['departamento'] ?? null)
@@ -39,8 +43,8 @@ class AccessUserSynchronizer
                     'last_name' => $lastName !== '' ? $lastName : null,
                     'email' => $email,
                     'active' => true,
-                    'last_login_at' => $now,
                     'last_synced_at' => $now,
+                    ...($isLogin ? ['last_login_at' => $now] : []),
                 ],
             );
 

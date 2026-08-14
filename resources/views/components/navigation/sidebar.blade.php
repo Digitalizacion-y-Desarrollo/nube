@@ -13,6 +13,7 @@
     ];
 
     $isAdministrator = in_array('nube_administracion_administrar', $permissions, true);
+    $isSuperuser = auth()->user()?->hasRole('superuser') ?? false;
     $items = array_filter(
         $items,
         fn (array $item): bool => $item['permission'] === null
@@ -24,7 +25,7 @@
 <aside class="glass-shell sticky top-0 hidden h-screen w-[280px] shrink-0 flex-col justify-between border-r border-line/70 px-5 py-6 lg:flex">
     <div>
         <div class="flex flex-col items-center gap-1.5 px-5 pb-6 pt-3">
-            <img src="{{ asset('assets/figma/logo-nezahualcoyotl.png') }}" alt="Escudo de Nezahualcóyotl" width="76" height="60" class="h-[60px] w-[76px] object-cover">
+            <x-ui.brand-logo width="114" height="76" class="h-[76px] w-[114px] rounded-xl shadow-sm" />
             <p class="text-base font-bold text-ink">Nube Municipal</p>
             <p class="text-[10px] tracking-[0.15em] text-muted">PORTAL DIGITAL</p>
         </div>
@@ -47,15 +48,28 @@
                 </a>
             @endforeach
         </nav>
+
+        @if ($isSuperuser)
+            <div class="my-5 h-px bg-line"></div>
+            <a
+                href="{{ route('admin.dashboard') }}"
+                class="flex items-center gap-3 rounded-lg border border-gold/40 bg-gold/10 px-4 py-3 text-sm font-semibold text-brand hover:bg-gold/20 dark:text-white"
+            >
+                <x-ui.icon name="shield" :size="20" alt="" />
+                <span>Administración</span>
+            </a>
+        @endif
     </div>
 
     <div>
         <div class="flex w-full items-center gap-3 rounded-xl p-1 text-left">
-            <img src="{{ $user['avatar'] ?? asset('assets/figma/avatar.png') }}" alt="" width="40" height="40" class="size-10 rounded-full object-cover">
-            <span class="min-w-0 flex-1">
-                <span class="block truncate text-sm font-semibold">{{ $user['name'] ?? 'Carlos Martínez' }}</span>
-                <span class="block truncate text-xs text-muted">{{ $user['department'] ?? 'Recursos Humanos' }}</span>
-            </span>
+            <a href="{{ route('profile.edit') }}" class="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 transition hover:bg-brand/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" title="Editar foto de perfil">
+                <img src="{{ $user['avatar'] ?? asset('assets/figma/avatar.png') }}" alt="Foto de perfil de {{ $user['name'] ?? 'usuario' }}" width="40" height="40" class="size-10 shrink-0 rounded-full object-cover ring-1 ring-line">
+                <span class="min-w-0 flex-1">
+                    <span class="block truncate text-sm font-semibold">{{ $user['name'] ?? 'Carlos Martínez' }}</span>
+                    <span class="block truncate text-xs text-muted">{{ $user['department'] ?? 'Recursos Humanos' }}</span>
+                </span>
+            </a>
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
                 <button type="submit" class="rounded-lg px-2 py-1 text-[11px] font-semibold text-brand hover:bg-brand/10 dark:text-white" title="Cerrar sesión">
@@ -71,7 +85,7 @@
     <aside class="relative flex h-full w-[min(82vw,320px)] flex-col bg-surface p-5 shadow-2xl">
         <div class="mb-6 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <span class="flex size-9 items-center justify-center rounded-lg bg-brand text-sm font-extrabold text-white">NE</span>
+                <x-ui.brand-logo alt="" width="48" height="32" class="h-8 w-12 rounded-md" />
                 <span class="font-bold text-brand dark:text-white">Nube Municipal</span>
             </div>
             <button type="button" data-sidebar-close class="rounded-full p-2 text-xl text-muted" aria-label="Cerrar">×</button>
@@ -87,6 +101,12 @@
                     <span>{{ $item['label'] }}</span>
                 </a>
             @endforeach
+            @if ($isSuperuser)
+                <a href="{{ route('admin.dashboard') }}" class="mt-4 flex items-center gap-3 rounded-lg border border-gold/40 bg-gold/10 px-4 py-3 text-sm font-semibold text-brand dark:text-white">
+                    <x-ui.icon name="shield" :size="20" alt="" />
+                    <span>Administración</span>
+                </a>
+            @endif
         </nav>
         <form action="{{ route('logout') }}" method="POST" class="border-t border-line pt-4">
             @csrf

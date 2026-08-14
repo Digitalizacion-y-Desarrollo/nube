@@ -177,6 +177,120 @@ class GranularSharingTest extends TestCase
         );
     }
 
+    public function test_file_inherits_folder_visibility_scope_and_collaborators_unless_overridden(): void
+    {
+        Storage::fake('nube');
+        $department = Department::factory()->create();
+        $owner = User::factory()->create(['department_id' => $department->id]);
+        $first = User::factory()->create(['department_id' => $department->id]);
+        $second = User::factory()->create(['department_id' => $department->id]);
+        $folder = Folder::factory()->create([
+            'owner_id' => $owner->id,
+            'department_id' => $department->id,
+            'visibility' => FileVisibility::Collaborative,
+            'collaboration_scope' => CollaborationScope::Selected,
+        ]);
+        $folder->collaborators()->sync([
+            $first->id => [
+                'can_view' => true,
+                'can_download' => true,
+                'can_rename' => true,
+                'can_move' => false,
+                'can_delete' => false,
+                'created_at' => now(),
+            ],
+            $second->id => ['created_at' => now()],
+        ]);
+
+        Http::fake([
+            '*/api/integrations/users*' => Http::response([
+                'data' => collect([$first, $second])
+                    ->map(fn (User $user): array => [
+                        'id' => $user->external_id,
+                        'name' => $user->name,
+                        'apellido_paterno' => $user->last_name,
+                        'email' => $user->email,
+                        'departamento' => $department->name,
+                    ])
+                    ->all(),
+            ]),
+        ]);
+
+        $response = $this->authenticated($owner, [
+            'nube_departamento_ver',
+            'nube_departamento_subir',
+            'nube_mis_archivos_subir',
+        ])->get(route('folders.department.show', $folder));
+
+        $response
+            ->assertOk()
+            ->assertSee('id="upload-collaborators-list"', false)
+            ->assertSee('value="selected" selected', false)
+            ->assertSee('La clasificación y los colaboradores se heredan de')
+            ->assertSee($first->email)
+            ->assertSee($second->email);
+
+        preg_match_all(
+            '/data-collaborator-checkbox\s+checked/u',
+            $response->getContent(),
+            $checkedCollaborators,
+        );
+        $this->assertCount(2, $checkedCollaborators[0]);
+
+        $this->post(route('files.store'), [
+            'file' => UploadedFile::fake()->create(
+                'heredado.pdf',
+                10,
+                'application/pdf',
+            ),
+            'folder_id' => $folder->id,
+        ])->assertRedirect()
+            ->assertSessionHas('status');
+
+        $inherited = File::query()
+            ->where('display_name', 'heredado.pdf')
+            ->firstOrFail();
+
+        $this->assertSame(FileVisibility::Collaborative, $inherited->visibility);
+        $this->assertSame(
+            CollaborationScope::Selected,
+            $inherited->collaboration_scope,
+        );
+        $this->assertEqualsCanonicalizing(
+            [$first->id, $second->id],
+            $inherited->collaborators()->pluck('users.id')->all(),
+        );
+        $this->assertDatabaseHas('file_collaborators', [
+            'file_id' => $inherited->id,
+            'user_id' => $first->id,
+            'can_view' => true,
+            'can_download' => true,
+            'can_rename' => true,
+            'can_move' => false,
+            'can_delete' => false,
+        ]);
+
+        $this->post(route('files.store'), [
+            'file' => UploadedFile::fake()->create(
+                'privado.pdf',
+                10,
+                'application/pdf',
+            ),
+            'folder_id' => $folder->id,
+            'visibility' => FileVisibility::Private->value,
+            'collaborators_configured' => '1',
+        ])->assertRedirect()
+            ->assertSessionHas('status');
+
+        $overridden = File::query()
+            ->where('display_name', 'privado.pdf')
+            ->firstOrFail();
+
+        $this->assertSame(FileVisibility::Private, $overridden->visibility);
+        $this->assertNull($overridden->collaboration_scope);
+        $this->assertSame(0, $overridden->collaborators()->count());
+    }
+
     public function test_collaborators_must_be_active_users_from_the_same_department(): void
     {
         Storage::fake('nube');
@@ -246,21 +360,118 @@ class GranularSharingTest extends TestCase
 
         $this->authenticated($owner, [
             'nube_mis_archivos_ver',
+            'nube_departamento_ver',
             'nube_mis_archivos_crear_carpeta',
             'nube_departamento_crear_carpeta',
             'nube_publicos_crear_carpeta',
             'nube_mis_archivos_subir',
             'nube_departamento_subir',
             'nube_publicos_subir',
-        ])->get(route('folders.mine'))
+        ])->get(route('folders.department'))
             ->assertOk()
             ->assertSee('Todo mi departamento')
             ->assertSee('Personas específicas')
+            ->assertSee('Buscar por nombre, correo, cargo o rol')
+            ->assertSee('data-collaborator-picker', false)
+            ->assertSee('id="upload-collaborators-list"', false)
+            ->assertSee('id="folder-collaborators-list"', false)
+            ->assertSee('role="combobox"', false)
+            ->assertSee('aria-multiselectable="true"', false)
             ->assertSee($coworker->email)
             ->assertSee('Analista')
             ->assertSee('Colaborador')
             ->assertDontSee($inactive->email)
             ->assertDontSee($outsider->email);
+    }
+
+    public function test_creation_forms_fix_visibility_and_destinations_to_the_current_section(): void
+    {
+        $owner = User::factory()->create();
+        $privateFolder = Folder::factory()->create([
+            'owner_id' => $owner->id,
+            'department_id' => $owner->department_id,
+            'name' => 'Destino privado',
+            'visibility' => FileVisibility::Private,
+        ]);
+        $collaborativeFolder = Folder::factory()->create([
+            'owner_id' => $owner->id,
+            'department_id' => $owner->department_id,
+            'name' => 'Destino colaborativo',
+            'visibility' => FileVisibility::Collaborative,
+            'collaboration_scope' => CollaborationScope::Department,
+        ]);
+        $publicFolder = Folder::factory()->create([
+            'owner_id' => $owner->id,
+            'department_id' => $owner->department_id,
+            'name' => 'Destino público',
+            'visibility' => FileVisibility::Public,
+        ]);
+
+        Http::fake([
+            '*/api/integrations/users*' => Http::response(['data' => []]),
+        ]);
+
+        $cases = [
+            [
+                'route' => route('folders.mine'),
+                'visibility' => FileVisibility::Private,
+                'folder' => $privateFolder,
+                'permissions' => [
+                    'nube_mis_archivos_ver',
+                    'nube_mis_archivos_subir',
+                    'nube_mis_archivos_crear_carpeta',
+                ],
+            ],
+            [
+                'route' => route('folders.department'),
+                'visibility' => FileVisibility::Collaborative,
+                'folder' => $collaborativeFolder,
+                'permissions' => [
+                    'nube_departamento_ver',
+                    'nube_departamento_subir',
+                    'nube_departamento_crear_carpeta',
+                ],
+            ],
+            [
+                'route' => route('folders.public'),
+                'visibility' => FileVisibility::Public,
+                'folder' => $publicFolder,
+                'permissions' => [
+                    'nube_publicos_ver',
+                    'nube_publicos_subir',
+                    'nube_publicos_crear_carpeta',
+                ],
+            ],
+        ];
+
+        foreach ($cases as $case) {
+            $response = $this->authenticated($owner, $case['permissions'])
+                ->get($case['route'])
+                ->assertOk()
+                ->assertSee(
+                    'name="visibility" data-sharing-visibility value="'
+                        .$case['visibility']->value.'"',
+                    false,
+                )
+                ->assertDontSee(
+                    '<select name="visibility" data-sharing-visibility',
+                    false,
+                )
+                ->assertSee(
+                    'value="'.$case['folder']->id.'"',
+                    false,
+                )
+                ->assertSee('Determinada por la sección actual.');
+
+            $this->assertSame(
+                2,
+                substr_count(
+                    $response->getContent(),
+                    'name="visibility" data-sharing-visibility value="'
+                        .$case['visibility']->value.'"',
+                ),
+            );
+        }
     }
 
     public function test_collaboration_form_reports_when_department_users_cannot_be_loaded(): void
@@ -272,9 +483,9 @@ class GranularSharingTest extends TestCase
         ]);
 
         $this->authenticated($owner, [
-            'nube_mis_archivos_ver',
+            'nube_departamento_ver',
             'nube_departamento_crear_carpeta',
-        ])->get(route('folders.mine'))
+        ])->get(route('folders.department'))
             ->assertOk()
             ->assertSee('No fue posible cargar las personas del departamento.')
             ->assertSee('Volver a intentar');
@@ -354,11 +565,38 @@ class GranularSharingTest extends TestCase
     public function test_folder_reclassification_requires_publish_permission_and_is_rendered(): void
     {
         $owner = User::factory()->create();
+        $collaborator = User::factory()->create([
+            'department_id' => $owner->department_id,
+            'name' => 'Persona',
+            'last_name' => 'Colaboradora',
+        ]);
         $folder = Folder::factory()->create([
             'owner_id' => $owner->id,
             'department_id' => $owner->department_id,
             'name' => 'Reclasificable',
             'visibility' => FileVisibility::Private,
+        ]);
+        $file = File::factory()->create([
+            'folder_id' => null,
+            'owner_id' => $owner->id,
+            'department_id' => $owner->department_id,
+            'display_name' => 'Reclasificable.pdf',
+            'original_name' => 'Reclasificable.pdf',
+            'visibility' => FileVisibility::Private,
+        ]);
+
+        Http::fake([
+            '*/api/integrations/users*' => Http::response([
+                'data' => [[
+                    'id' => $collaborator->external_id,
+                    'name' => $collaborator->name,
+                    'apellido_paterno' => $collaborator->last_name,
+                    'email' => $collaborator->email,
+                    'departamento' => $owner->department->name,
+                    'cargo' => 'Analista',
+                    'rol' => 'Colaborador',
+                ]],
+            ]),
         ]);
 
         $this->authenticated($owner, ['nube_mis_archivos_ver'])
@@ -377,6 +615,10 @@ class GranularSharingTest extends TestCase
             ->assertSee('Privado (actual)')
             ->assertSee('Colaborativo')
             ->assertSee('Público')
+            ->assertSee('value="selected" selected', false)
+            ->assertSee('id="folder-visibility-collaborators-'.$folder->id.'-list"', false)
+            ->assertSee('id="file-visibility-collaborators-'.$file->id.'-list"', false)
+            ->assertSee($collaborator->email)
             ->assertSee(route('folders.visibility', $folder));
     }
 

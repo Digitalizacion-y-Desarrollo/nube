@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\CollaboratorPermission;
 use App\Enums\FileVisibility;
 use App\Http\Requests\Concerns\ValidatesCollaborators;
 use App\Models\File;
@@ -89,8 +90,47 @@ class UploadFileRequest extends FormRequest
             $this->merge(['folder_id' => null]);
         }
 
+        $folderId = $this->input('folder_id');
+        $folder = is_string($folderId) && Str::isUuid($folderId)
+            ? Folder::query()->with('collaborators:id')->find($folderId)
+            : null;
+
         if (! $this->has('visibility')) {
-            $this->merge(['visibility' => FileVisibility::Private->value]);
+            $this->merge([
+                'visibility' => $folder?->visibility->value
+                    ?? FileVisibility::Private->value,
+            ]);
+        }
+
+        if ($this->input('visibility') === FileVisibility::Collaborative->value) {
+            if (! $this->has('collaboration_scope')) {
+                $this->merge([
+                    'collaboration_scope' => $folder?->visibility === FileVisibility::Collaborative
+                        ? $folder->collaboration_scope?->value
+                        : null,
+                ]);
+            }
+
+            if ($this->input('collaboration_scope') === 'selected'
+                && ! $this->has('collaborators')
+                && ! $this->boolean('collaborators_configured')
+                && $folder?->visibility === FileVisibility::Collaborative
+                && $folder->collaboration_scope?->value === 'selected') {
+                $this->merge([
+                    'collaborators' => $folder->collaborators
+                        ->pluck('id')
+                        ->all(),
+                    'collaborator_permissions' => $folder->collaborators
+                        ->mapWithKeys(fn ($collaborator): array => [
+                            $collaborator->id => collect(CollaboratorPermission::cases())
+                                ->filter(fn (CollaboratorPermission $permission): bool => (bool) $collaborator->pivot->{$permission->pivotColumn()})
+                                ->map(fn (CollaboratorPermission $permission): string => $permission->value)
+                                ->values()
+                                ->all(),
+                        ])
+                        ->all(),
+                ]);
+            }
         }
 
         $this->prepareCollaborationForValidation();

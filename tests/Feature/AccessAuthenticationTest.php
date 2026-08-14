@@ -92,6 +92,37 @@ class AccessAuthenticationTest extends TestCase
         $this->assertDatabaseHas('permissions', ['name' => 'nube_mis_archivos_ver']);
     }
 
+    public function test_session_revalidation_synchronizes_without_overwriting_the_last_login(): void
+    {
+        Http::fake([
+            'https://access.example.test/api/auth/login' => Http::response($this->loginPayload()),
+            'https://access.example.test/api/auth/me*' => Http::response($this->loginPayload()),
+        ]);
+
+        $this->post(route('login.store'), [
+            'email' => 'ana@example.test',
+            'password' => 'test-password',
+        ])->assertRedirect(route('dashboard'));
+
+        $user = User::query()->where('external_id', '25')->firstOrFail();
+        $loggedInAt = $user->last_login_at;
+        $this->assertNotNull($loggedInAt);
+
+        $this->travel(20)->minutes();
+
+        $this->get(route('dashboard'))->assertOk();
+
+        $user->refresh();
+        $this->assertTrue(
+            $loggedInAt->equalTo($user->last_login_at),
+            'La revalidación de sesión no debe alterar el último inicio de sesión.',
+        );
+        $this->assertTrue(
+            $user->last_synced_at->greaterThan($loggedInAt),
+            'La revalidación de sesión debe actualizar la última sincronización.',
+        );
+    }
+
     public function test_user_without_entry_permission_is_not_authenticated(): void
     {
         Http::fake(function (Request $request) {

@@ -22,6 +22,8 @@ class DatabaseSchemaTest extends TestCase
             'folders',
             'files',
             'audit_logs',
+            'folder_collaborators',
+            'file_collaborators',
         ] as $table) {
             $this->assertTrue(Schema::hasTable($table), "Missing table [{$table}].");
         }
@@ -59,6 +61,7 @@ class DatabaseSchemaTest extends TestCase
             'visibility',
             'path_cache',
             'deleted_at',
+            'deleted_by',
         ]));
 
         $this->assertTrue(Schema::hasColumns('files', [
@@ -78,6 +81,7 @@ class DatabaseSchemaTest extends TestCase
             'checksum',
             'uploaded_at',
             'deleted_at',
+            'deleted_by',
         ]));
 
         $this->assertTrue(Schema::hasColumns('audit_logs', [
@@ -92,5 +96,17 @@ class DatabaseSchemaTest extends TestCase
             'created_at',
         ]));
         $this->assertFalse(Schema::hasColumn('audit_logs', 'updated_at'));
+
+        foreach (['folder_collaborators', 'file_collaborators'] as $table) {
+            $this->assertTrue(Schema::hasColumns($table, [
+                'user_id',
+                'can_view',
+                'can_download',
+                'can_rename',
+                'can_move',
+                'can_delete',
+                'created_at',
+            ]));
+        }
     }
 }

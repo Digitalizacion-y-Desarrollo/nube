@@ -20,7 +20,7 @@ class DemoPermissionSeederTest extends TestCase
         $this->assertDatabaseHas('permissions', ['name' => 'nube_inicio_ver']);
         $this->assertDatabaseHas('permissions', ['name' => 'nube_departamento_ver']);
         $this->assertDatabaseHas('permissions', ['name' => 'nube_publicos_ver']);
-        $this->assertDatabaseHas('permissions', ['name' => 'nube_mis_archivos_publicar']);
+        $this->assertDatabaseHas('permissions', ['name' => 'nube.archivos.publicar']);
         $this->assertDatabaseHas('permissions', ['name' => 'nube_departamento_descargar']);
         $this->assertDatabaseHas('permissions', ['name' => 'nube_publicos_publicar']);
         $this->assertDatabaseHas('permissions', ['name' => 'nube_papelera_ver']);

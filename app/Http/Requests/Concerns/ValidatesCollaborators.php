@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Concerns;
 
 use App\Enums\CollaborationScope;
+use App\Enums\CollaboratorPermission;
 use App\Enums\FileVisibility;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Validation\Rule;
@@ -39,6 +40,46 @@ trait ValidatesCollaborators
                         ->where('active', true),
                 ),
             ],
+            'collaborator_permissions' => [
+                'nullable',
+                'array',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! is_array($value)) {
+                        return;
+                    }
+
+                    $selectedIds = collect((array) $this->input('collaborators', []))
+                        ->map(fn (mixed $id): string => (string) $id);
+
+                    foreach ($value as $userId => $permissions) {
+                        if (! $selectedIds->contains((string) $userId)) {
+                            $fail('No puedes asignar permisos a una persona que no fue seleccionada.');
+
+                            return;
+                        }
+
+                        if (is_array($permissions)
+                            && ! in_array(CollaboratorPermission::View->value, $permissions, true)) {
+                            $fail('Toda persona seleccionada debe conservar el permiso para ver.');
+
+                            return;
+                        }
+                    }
+                },
+            ],
+            'collaborator_permissions.*' => [
+                'array',
+                'min:1',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (is_array($value) && count($value) !== count(array_unique($value))) {
+                        $fail('No repitas permisos para la misma persona.');
+                    }
+                },
+            ],
+            'collaborator_permissions.*.*' => [
+                'string',
+                Rule::enum(CollaboratorPermission::class),
+            ],
         ];
     }
 
@@ -57,6 +98,10 @@ trait ValidatesCollaborators
             'collaborators.*.distinct' => 'No repitas personas en la selección.',
             'collaborators.*.not_in' => 'El propietario ya tiene acceso y no debe seleccionarse.',
             'collaborators.*.exists' => 'Solo puedes seleccionar personas activas de tu departamento.',
+            'collaborator_permissions.array' => 'La configuración de permisos por persona no es válida.',
+            'collaborator_permissions.*.array' => 'Los permisos asignados a una persona no son válidos.',
+            'collaborator_permissions.*.min' => 'Asigna al menos el permiso para ver.',
+            'collaborator_permissions.*.*.enum' => 'Uno de los permisos internos seleccionados no es válido.',
         ];
     }
 
@@ -67,7 +112,6 @@ trait ValidatesCollaborators
                 'collaboration_scope' => CollaborationScope::Department->value,
             ]);
         }
-
     }
 
     private function isCollaborative(): bool

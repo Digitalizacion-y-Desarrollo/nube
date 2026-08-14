@@ -47,12 +47,12 @@ class LoginController extends Controller
 
                 return $this->failure(
                     $request,
-                    'Tu cuenta no tiene el permiso nube_inicio_ver. Contacta al administrador de tu departamento.',
+                    'Tu cuenta no tiene el permiso para acceder a la nube. Contacta al administrador de tu departamento.',
                     'permission',
                 );
             }
 
-            $user = $synchronizer->synchronize($authData);
+            $user = $synchronizer->synchronize($authData, isLogin: true);
 
             $request->session()->regenerate();
             Auth::login($user);
