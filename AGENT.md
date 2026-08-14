@@ -59,11 +59,14 @@ API devuelve una lista plana de claves globalmente únicas, prefijadas por
 recurso y escritas con guion bajo. El catálogo operativo de 28 permisos está
 definido en la Fase 3 de `Plan_de_Desarrollo_por_Fases_Nube_Municipal.md`.
 
-- Los roles son informativos y no sustituyen permisos. La excepción de alcance
-  `admin_area` permite administrar contenido colaborativo del propio
-  departamento únicamente cuando también existe el permiso funcional de la
-  acción.
-- Autorizar exclusivamente con los permisos efectivos del usuario.
+- Los roles son informativos y no sustituyen permisos funcionales. Las
+  excepciones son: `admin_area`, que limita el alcance administrativo de
+  contenido colaborativo del propio departamento y siempre requiere el permiso
+  de la acción; y `superuser`, que habilita exclusivamente el acceso al
+  panel administrativo de consulta bajo `/admin`.
+- Autorizar las operaciones funcionales exclusivamente con los permisos
+  efectivos del usuario; el rol `superuser` no concede por sí solo acciones
+  sobre archivos o carpetas.
 - Crear o actualizar localmente cada permiso conforme sea recibido del API.
 - Sincronizar exactamente `user_permissions` y retirar de ese usuario los
   permisos que el API deje de devolver.
@@ -155,8 +158,13 @@ Usar Policies para todas las acciones sensibles y Form Requests para validar
 entradas. La ubicación física nunca sustituye la autorización.
 
 - Privado: solo el propietario puede ver, descargar, modificar y eliminar.
-- Colaborativo: usuarios del mismo departamento pueden ver y descargar; solo
-  el propietario puede renombrar o eliminar.
+- Colaborativo para todo el departamento: usuarios del mismo departamento
+  pueden ver y descargar; solo el propietario o `admin_area` dentro de su
+  alcance puede administrar.
+- Colaborativo para personas específicas: cada colaborador tiene permisos
+  internos por recurso para ver, descargar, renombrar, mover y eliminar. Estos
+  permisos locales se combinan con el permiso funcional recibido del API y no
+  se sincronizan con el sistema de accesos.
 - Público interno: cualquier usuario autenticado puede ver y descargar; solo
   el propietario o un administrador puede modificar.
 - Publicar o cambiar visibilidad requiere el permiso correspondiente.
@@ -164,6 +172,9 @@ entradas. La ubicación física nunca sustituye la autorización.
 - La visibilidad de carpetas, subcarpetas y archivos es independiente.
 - Los recursos colaborativos admiten acceso para todo el departamento o para
   una selección de personas activas del mismo departamento.
+- Las carpetas compartidas transmiten a los archivos nuevos su selección de
+  colaboradores y la matriz interna de permisos, salvo que el propietario la
+  sobrescriba durante la carga.
 - Una carpeta nunca amplía automáticamente el acceso a sus archivos.
 - No permitir operaciones sobre carpetas eliminadas.
 
@@ -259,7 +270,7 @@ No implementar salvo solicitud explícita de ampliación de alcance:
 - Aplicación móvil o sincronización de escritorio.
 - Edición en línea.
 - Enlaces públicos externos.
-- Panel administrativo avanzado.
+- Mutaciones administrativas avanzadas desde el panel de superusuario.
 
 ## Definition of Done
 

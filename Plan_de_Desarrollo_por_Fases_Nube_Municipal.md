@@ -330,8 +330,9 @@ El sistema de accesos devuelve los permisos como una lista plana de claves:
 
 Reglas obligatorias:
 
-- Los roles son únicamente informativos y no conceden capacidades por sí
-  mismos.
+- Los roles son informativos y no conceden capacidades funcionales por sí
+  mismos. La excepción acotada es `superuser`, que habilita el acceso al
+  panel administrativo de consulta, sin conceder operaciones sobre recursos.
 - Los permisos efectivos asignados al usuario son la única fuente de
   autorización funcional.
 - Cada permiso debe tener una clave globalmente única porque el API no utiliza
@@ -735,10 +736,13 @@ public
 
 - Pueden compartirse con todo el departamento o con personas específicas del
   mismo departamento.
-- Solo los colaboradores incluidos por el alcance seleccionado pueden
-  visualizarlos y descargarlos.
-- Solo el propietario puede renombrarlos.
-- Solo el propietario puede eliminarlos.
+- En alcance de departamento, los usuarios pueden visualizar y descargar; solo
+  el propietario o `admin_area` dentro de su alcance puede administrar.
+- En alcance seleccionado, cada colaborador recibe permisos internos por
+  recurso para ver, descargar, renombrar, mover y eliminar. La acción requiere
+  también el permiso funcional correspondiente recibido del API.
+- Los permisos internos de compartición se almacenan exclusivamente en Nube
+  Municipal y no amplían el catálogo del sistema de accesos.
 - Usuarios de otros departamentos no pueden acceder.
 
 ### Reglas de archivos públicos internos
@@ -764,6 +768,9 @@ public
 - Permitir que la visibilidad de una carpeta y sus contenidos sea independiente.
 - Listar personas activas del mismo departamento al seleccionar colaboración
   específica.
+- Permitir configurar por persona los permisos internos de ver, descargar,
+  renombrar, mover y eliminar, con herencia inicial de carpeta a archivos
+  nuevos.
 
 ### Rutas conceptuales
 
@@ -1115,6 +1122,174 @@ La plataforma debe poder instalarse desde cero siguiendo la documentación y com
 
 ---
 
+## Fase 11. Acceso y navegación del superusuario
+
+### Objetivo
+
+Proporcionar una sección administrativa independiente y de consulta para las
+personas que reciban desde el sistema de Accesos el rol `superuser`.
+
+### Actividades
+
+- Crear rutas `/admin` protegidas por sesión válida y middleware de rol.
+- Responder `403` a usuarios autenticados sin el rol `superuser`.
+- Crear navegación administrativa para Resumen, Archivos, Departamentos,
+  Usuarios, Papelera, Auditoría y Configuración.
+- Mostrar indicadores y listados globales sin exponer rutas físicas, tokens,
+  claves o contraseñas.
+- Permitir alternar entre el panel administrativo y la nube personal.
+- Mantener las operaciones sobre archivos y carpetas sujetas a los permisos
+  efectivos y Policies existentes.
+
+### Entregables
+
+- Middleware `superuser`.
+- Layout y navegación administrativa responsive.
+- Panel global de consulta con siete secciones.
+- Pruebas Feature de acceso, navegación y protección de datos sensibles.
+
+### Criterio de aceptación
+
+Sólo un usuario autenticado con el rol `superuser` puede abrir `/admin`; el
+resto recibe `403`. El superusuario puede recorrer todas las secciones y volver
+a su nube personal sin adquirir permisos funcionales adicionales.
+
+### Estado de implementación — 28 de julio de 2026
+
+Implementado y cubierto por pruebas automatizadas. La revisión visual
+interactiva queda pendiente hasta disponer de un navegador conectado.
+
+---
+
+## Fase 12. Dashboard administrativo
+
+### Objetivo
+
+Presentar al rol `superuser` una vista global del estado y consumo de la
+plataforma usando exclusivamente datos reales.
+
+### Actividades
+
+- Mostrar totales de archivos, carpetas, usuarios y departamentos.
+- Separar archivos y carpetas activos de los elementos en papelera.
+- Calcular el espacio de archivos activos, eliminados y total retenido.
+- Distribuir archivos privados, colaborativos y públicos, distinguiendo activos
+  y eliminados.
+- Mostrar la actividad reciente de todo el sistema.
+- Ordenar los cinco departamentos y usuarios con mayor consumo, incluyendo el
+  espacio activo y el espacio pendiente de purga.
+- Formatear bytes en unidades legibles desde B hasta TB.
+- Contemplar estados vacíos cuando todavía no existan archivos.
+
+### Entregables
+
+- Servicio de consultas y agregados administrativos.
+- Dashboard responsive con indicadores, desglose y rankings.
+- Pruebas Feature con datos activos, eliminados y estados vacíos.
+
+### Criterio de aceptación
+
+Los indicadores deben corresponder a los datos persistidos, separar
+correctamente elementos activos y eliminados, ordenar el consumo real y mostrar
+unidades legibles sin exponer rutas físicas.
+
+### Estado de implementación — 28 de julio de 2026
+
+Implementado y cubierto por pruebas automatizadas. La revisión visual
+interactiva queda pendiente hasta disponer de un navegador conectado.
+
+---
+
+## Fase 13. Explorador global de archivos
+
+### Objetivo
+
+Permitir que el rol `superuser` consulte los metadatos de todos los archivos y,
+cuando también tenga el permiso funcional `nube_administracion_administrar`,
+realice operaciones administrativas auditadas.
+
+### Actividades
+
+- Crear un listado global paginado con filtros por nombre, departamento,
+  usuario, clasificación, tipo, fecha de carga y estado.
+- Mostrar metadatos operativos sin revelar ruta física, nombre almacenado ni
+  checksum.
+- Descargar archivos mediante controlador, autorización y disco privado.
+- Cambiar la clasificación manteniendo la consistencia entre metadatos y
+  almacenamiento físico.
+- Al seleccionar la clasificación colaborativa, permitir acceso a todo el
+  departamento propietario o a personas activas específicas de esa área, con
+  permisos internos configurables; permitir actualizar este alcance sin mover
+  el archivo de su carpeta actual.
+- Enviar archivos activos a la papelera con confirmación explícita.
+- Mantener la consulta disponible al rol `superuser`, pero exigir además el
+  permiso `nube_administracion_administrar` para las mutaciones y descargas.
+- Registrar las consultas y operaciones como eventos `admin.file.*`.
+- Cubrir estados con resultados, sin resultados, activos y en papelera.
+
+### Entregables
+
+- Controlador y Form Requests administrativos separados.
+- Policies específicas para consulta y operación global.
+- Explorador responsive, detalle de metadatos y confirmaciones destructivas.
+- Pruebas Feature de filtros, autorización, privacidad, almacenamiento y
+  auditoría.
+
+### Criterio de aceptación
+
+El superusuario puede localizar y consultar archivos globalmente sin exponer
+datos del almacenamiento. Las operaciones requieren permiso funcional, pasan
+por Policies, conservan el archivo privado y generan trazabilidad administrativa.
+
+### Estado de implementación — 11 de agosto de 2026
+
+Implementado y cubierto por pruebas automatizadas. La revisión visual
+interactiva en escritorio, tableta y móvil queda pendiente.
+
+---
+
+## Fase 14. Administración de departamentos
+
+### Objetivo
+
+Supervisar el estado, sincronización y consumo de la nube por departamento sin
+crear ni modificar localmente la estructura proveniente de Accesos.
+
+### Actividades
+
+- Listar departamentos sincronizados con búsqueda y filtro de estado.
+- Mostrar usuarios activos y totales, archivos, carpetas, papelera y
+  almacenamiento por departamento.
+- Presentar estado y fecha de última sincronización.
+- Crear un detalle con identidad externa, jerarquía y áreas dependientes.
+- Listar usuarios relacionados y archivos colaborativos o públicos activos.
+- Mostrar la actividad reciente realizada por usuarios o sobre recursos del
+  departamento.
+- Navegar al inventario global de archivos y al listado de usuarios conservando
+  el filtro departamental.
+- Mantener únicamente rutas GET para departamentos; Accesos sigue siendo la
+  fuente oficial de creación y edición.
+
+### Entregables
+
+- Servicio administrativo de agregados y relaciones departamentales.
+- Listado paginado y detalle responsive de cada departamento.
+- Navegación relacionada hacia usuarios, archivos y metadatos.
+- Pruebas Feature de métricas, filtros, privacidad y modo de solo consulta.
+
+### Criterio de aceptación
+
+El superusuario puede consultar el estado, sincronización, consumo, usuarios,
+archivos compartidos y actividad de cada departamento sin exponer rutas físicas
+ni disponer de operaciones locales para crear o editar áreas.
+
+### Estado de implementación — 11 de agosto de 2026
+
+Implementado y cubierto por pruebas automatizadas. La revisión visual
+interactiva y el cambio de estado de la tarjeta en Trello quedan pendientes.
+
+---
+
 # 4. Orden recomendado de ejecución
 
 ```text
@@ -1128,6 +1303,10 @@ La plataforma debe poder instalarse desde cero siguiendo la documentación y com
 8. Seguridad y auditoría
 9. Pruebas
 10. Despliegue y documentación
+11. Acceso y navegación del superusuario
+12. Dashboard administrativo
+13. Explorador global de archivos
+14. Administración de departamentos
 ```
 
 La implementación visual puede avanzar parcialmente desde la primera fase, pero las acciones de la interfaz solo deben conectarse cuando las reglas de negocio y autorización correspondientes estén listas.

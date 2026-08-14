@@ -3,8 +3,8 @@
         @if ($canUploadFile)
             <x-ui.modal
                 id="upload-modal"
-                title="Subir archivo"
-                :data-modal-auto-open="$errors->uploadFile->any() ? 'true' : null"
+                :title="$currentFolder ? 'Agregar archivo en '.$currentFolder->name : 'Subir archivo'"
+                :data-modal-auto-open="$errors->uploadFile->any() || $autoOpenModal === 'upload' ? 'true' : null"
             >
                 <form action="{{ route('files.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4" data-file-upload-form data-sharing-form>
                     @csrf
@@ -20,31 +20,48 @@
                         >
                     </label>
 
-                    <label class="block">
-                        <span class="mb-1.5 block text-[13px] font-semibold text-muted">Clasificación</span>
-                        <select name="visibility" data-sharing-visibility class="h-[46px] w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
-                            @foreach ($uploadVisibilityOptions as $visibilityOption)
-                                <option value="{{ $visibilityOption['value'] }}" @selected(old('visibility', $defaultUploadVisibility) === $visibilityOption['value'])>
-                                    {{ $visibilityOption['label'] }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </label>
+                    <div class="rounded-xl border border-line bg-surface-alt px-3.5 py-3">
+                        <input type="hidden" name="visibility" data-sharing-visibility value="{{ $defaultUploadVisibility }}">
+                        <span class="block text-[11px] font-semibold uppercase tracking-wide text-muted">Clasificación</span>
+                        <span class="mt-1 block text-sm font-semibold text-ink">
+                            {{ \App\Enums\FileVisibility::from($defaultUploadVisibility)->label() }}
+                        </span>
+                        <span class="mt-1 block text-xs text-muted">
+                            Determinada por la sección actual. Podrás cambiarla después desde Reclasificar.
+                        </span>
+                    </div>
+
+                    @if ($currentFolder)
+                        <p class="rounded-lg bg-soft px-3 py-2.5 text-xs leading-5 text-muted">
+                            La clasificación y los colaboradores se heredan de
+                            <span class="font-semibold text-ink">{{ $currentFolder->name }}</span>.
+                            Puedes cambiarlos antes de subir el archivo.
+                        </p>
+                    @endif
 
                     <label class="block">
                         <span class="mb-1.5 block text-[13px] font-semibold text-muted">Carpeta de destino</span>
                         <select name="folder_id" class="h-[46px] w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
                             <option value="" @selected(old('folder_id', $currentFolder?->id) === null)>Raíz de la clasificación</option>
-                            @foreach ($destinationFolders as $destinationFolder)
+                            @foreach ($creationDestinationFolders as $destinationFolder)
                                 <option value="{{ $destinationFolder->id }}" @selected(old('folder_id', $currentFolder?->id) === $destinationFolder->id)>
                                     {{ $destinationFolder->path_cache ?: '/'.$destinationFolder->name }} · {{ $destinationFolder->visibility->label() }}
                                 </option>
                             @endforeach
                         </select>
+                        @if ($currentFolder)
+                            <span class="mt-1.5 block text-xs text-muted">
+                                Ubicación actual preseleccionada: {{ $logicalPath }}
+                            </span>
+                        @endif
                     </label>
 
                     @include('folders.partials.collaboration-fields', [
                         'contextId' => null,
+                        'pickerId' => 'upload-collaborators',
+                        'defaultCollaborationScope' => $defaultUploadCollaborationScope,
+                        'defaultCollaborators' => $defaultUploadCollaborators,
+                        'defaultCollaboratorPermissions' => $defaultUploadCollaboratorPermissions,
                         'errorBag' => $errors->getBag('uploadFile'),
                     ])
 
@@ -80,13 +97,11 @@
         @if ($canCreateFolder)
             <x-ui.modal
                 id="folder-modal"
-                title="Nueva carpeta"
-                :data-modal-auto-open="$errors->createFolder->any() ? 'true' : null"
+                :title="$currentFolder ? 'Nueva subcarpeta en '.$currentFolder->name : 'Nueva carpeta'"
+                :data-modal-auto-open="$errors->createFolder->any() || $autoOpenModal === 'folder' ? 'true' : null"
             >
                     <form action="{{ route('folders.store') }}" method="POST" class="space-y-4" data-sharing-form>
                     @csrf
-                    <input type="hidden" name="parent_id" value="{{ $currentFolder?->id }}">
-
                     <x-ui.input
                         name="name"
                         label="Nombre de la carpeta"
@@ -99,18 +114,36 @@
                     />
 
                     <label class="block">
-                        <span class="mb-1.5 block text-[13px] font-semibold text-muted">Clasificación</span>
-                        <select name="visibility" data-sharing-visibility class="h-[46px] w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
-                            @foreach ($folderVisibilityOptions as $visibilityOption)
-                                <option value="{{ $visibilityOption['value'] }}" @selected(old('visibility', $defaultUploadVisibility) === $visibilityOption['value'])>
-                                    {{ $visibilityOption['label'] }}
+                        <span class="mb-1.5 block text-[13px] font-semibold text-muted">Carpeta de destino</span>
+                        <select name="parent_id" class="h-[46px] w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
+                            <option value="" @selected(old('parent_id', $currentFolder?->id) === null)>Raíz de la clasificación</option>
+                            @foreach ($destinationFolders as $destinationFolder)
+                                <option value="{{ $destinationFolder->id }}" @selected(old('parent_id', $currentFolder?->id) === $destinationFolder->id)>
+                                    {{ $destinationFolder->path_cache ?: '/'.$destinationFolder->name }} · {{ $destinationFolder->visibility->label() }}
                                 </option>
                             @endforeach
                         </select>
+                        @if ($currentFolder)
+                            <span class="mt-1.5 block text-xs text-muted">
+                                Ubicación actual preseleccionada: {{ $logicalPath }}
+                            </span>
+                        @endif
                     </label>
+
+                    <div class="rounded-xl border border-line bg-surface-alt px-3.5 py-3">
+                        <input type="hidden" name="visibility" data-sharing-visibility value="{{ $defaultFolderVisibility }}">
+                        <span class="block text-[11px] font-semibold uppercase tracking-wide text-muted">Clasificación</span>
+                        <span class="mt-1 block text-sm font-semibold text-ink">
+                            {{ \App\Enums\FileVisibility::from($defaultFolderVisibility)->label() }}
+                        </span>
+                        <span class="mt-1 block text-xs text-muted">
+                            Determinada por la sección actual. Podrás cambiarla después desde Reclasificar.
+                        </span>
+                    </div>
 
                     @include('folders.partials.collaboration-fields', [
                         'contextId' => null,
+                        'pickerId' => 'folder-collaborators',
                         'errorBag' => $errors->getBag('createFolder'),
                     ])
 
@@ -120,10 +153,6 @@
                     @if ($errors->createFolder->has('visibility'))
                         <x-ui.alert>{{ $errors->createFolder->first('visibility') }}</x-ui.alert>
                     @endif
-
-                    <p class="text-xs leading-5 text-muted">
-                        Se creará dentro de <span class="font-semibold text-ink">{{ $logicalPath }}</span>.
-                    </p>
 
                     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                         <x-ui.button type="button" variant="secondary" data-modal-close="folder-modal">
@@ -164,6 +193,50 @@
                                 Cancelar
                             </x-ui.button>
                             <x-ui.button type="submit">Guardar nombre</x-ui.button>
+                        </div>
+                    </form>
+                </x-ui.modal>
+            @endif
+
+            @if ($folderItem['can_move'])
+                <x-ui.modal
+                    :id="$folderItem['move_modal_id']"
+                    title="Mover carpeta"
+                    :data-modal-auto-open="$errors->moveFolder->any() && old('folder_context') === $folderItem['id'] ? 'true' : null"
+                >
+                    <form action="{{ $folderItem['move_url'] }}" method="POST" class="space-y-4">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="folder_context" value="{{ $folderItem['id'] }}">
+
+                        <label class="block">
+                            <span class="mb-1.5 block text-[13px] font-semibold text-muted">Carpeta de destino</span>
+                            <select name="destination_folder_id" class="h-[46px] w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
+                                <option value="" @disabled($folderItem['parent_id'] === null)>
+                                    {{ $folderItem['visibility_label'] }} / raíz
+                                </option>
+                                @foreach ($destinationFolders->where('visibility', \App\Enums\FileVisibility::from($folderItem['visibility'])) as $destinationFolder)
+                                    @continue($destinationFolder->id === $folderItem['id'])
+                                    <option
+                                        value="{{ $destinationFolder->id }}"
+                                        @selected(old('folder_context') === $folderItem['id'] && old('destination_folder_id') === $destinationFolder->id)
+                                        @disabled($folderItem['parent_id'] === $destinationFolder->id)
+                                    >
+                                        {{ $destinationFolder->path_cache ?: '/'.$destinationFolder->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        @if (old('folder_context') === $folderItem['id'] && $errors->moveFolder->has('destination_folder_id'))
+                            <x-ui.alert>{{ $errors->moveFolder->first('destination_folder_id') }}</x-ui.alert>
+                        @endif
+
+                        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                            <x-ui.button type="button" variant="secondary" :data-modal-close="$folderItem['move_modal_id']">
+                                Cancelar
+                            </x-ui.button>
+                            <x-ui.button type="submit">Mover carpeta</x-ui.button>
                         </div>
                     </form>
                 </x-ui.modal>
@@ -224,6 +297,7 @@
                         @include('folders.partials.collaboration-fields', [
                             'contextId' => $folderItem['id'],
                             'contextField' => 'folder_context',
+                            'pickerId' => 'folder-visibility-collaborators-'.$folderItem['id'],
                             'errorBag' => $errors->getBag('changeFolderVisibility'),
                         ])
 
@@ -290,7 +364,7 @@
                             <span class="mb-1.5 block text-[13px] font-semibold text-muted">Carpeta de destino</span>
                             <select name="destination_folder_id" class="h-[46px] w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
                                 <option value="">{{ $fileItem['visibility_label'] }} / raíz</option>
-                                @foreach ($destinationFolders as $destinationFolder)
+                                @foreach ($destinationFolders->where('visibility', \App\Enums\FileVisibility::from($fileItem['visibility'])) as $destinationFolder)
                                     <option
                                         value="{{ $destinationFolder->id }}"
                                         @selected(old('file_context') === $fileItem['id'] && old('destination_folder_id') === $destinationFolder->id)
@@ -353,6 +427,7 @@
 
                         @include('folders.partials.collaboration-fields', [
                             'contextId' => $fileItem['id'],
+                            'pickerId' => 'file-visibility-collaborators-'.$fileItem['id'],
                             'errorBag' => $errors->getBag('changeVisibility'),
                         ])
 
@@ -463,19 +538,30 @@
             </div>
 
             @if ($canUploadFile || $canCreateFolder)
-                <div class="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
-                    @if ($canUploadFile)
-                        <x-ui.button data-modal-open="upload-modal" class="w-full sm:w-auto">
-                            <x-ui.icon name="upload-cloud" :size="18" alt="" />
-                            <span>Subir archivo</span>
-                        </x-ui.button>
+                <div
+                    @if ($currentFolder) data-current-folder-actions @endif
+                    class="w-full shrink-0 sm:w-auto"
+                    @if ($currentFolder) aria-label="Agregar contenido en {{ $currentFolder->name }}" @endif
+                >
+                    @if ($currentFolder)
+                        <p class="mb-2 text-xs font-semibold text-muted sm:text-right">
+                            Agregar en esta carpeta
+                        </p>
                     @endif
-                    @if ($canCreateFolder)
-                        <x-ui.button variant="secondary" data-modal-open="folder-modal" class="w-full sm:w-auto">
-                            <x-ui.icon name="folder-plus" :size="18" alt="" />
-                            <span>Nueva carpeta</span>
-                        </x-ui.button>
-                    @endif
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        @if ($canUploadFile)
+                            <x-ui.button data-modal-open="upload-modal" class="w-full sm:w-auto">
+                                <x-ui.icon name="upload-cloud" :size="18" alt="" />
+                                <span>{{ $currentFolder ? 'Agregar archivo' : 'Subir archivo' }}</span>
+                            </x-ui.button>
+                        @endif
+                        @if ($canCreateFolder)
+                            <x-ui.button variant="secondary" data-modal-open="folder-modal" class="w-full sm:w-auto">
+                                <x-ui.icon name="folder-plus" :size="18" alt="" />
+                                <span>{{ $currentFolder ? 'Nueva subcarpeta' : 'Nueva carpeta' }}</span>
+                            </x-ui.button>
+                        @endif
+                    </div>
                 </div>
             @endif
         </div>
@@ -498,12 +584,120 @@
         </article>
     </section>
 
+    <section aria-labelledby="explorer-filters-title" class="mb-5 rounded-xl border border-line bg-surface p-4 sm:p-5">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+                <h3 id="explorer-filters-title" class="text-sm font-bold text-ink">Buscar y filtrar</h3>
+                <p class="mt-1 text-xs text-muted" aria-live="polite">
+                    {{ $filteredItemCount }} de {{ $availableItemCount }} elementos
+                </p>
+            </div>
+            @if (collect($filters)->except(['sort', 'direction', 'per_page'])->filter()->isNotEmpty())
+                <a href="{{ url()->current() }}" class="rounded-lg px-3 py-2 text-xs font-semibold text-brand hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand dark:text-white">
+                    Limpiar filtros
+                </a>
+            @endif
+        </div>
+
+        <form method="GET" action="{{ url()->current() }}" class="grid gap-3 md:grid-cols-2 xl:grid-cols-12">
+            <label class="xl:col-span-4">
+                <span class="mb-1.5 block text-xs font-semibold text-muted">Buscar</span>
+                <span class="relative block">
+                    <x-ui.icon name="search" :size="17" alt="" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                        type="search"
+                        name="q"
+                        value="{{ $filters['q'] }}"
+                        maxlength="100"
+                        placeholder="Nombre de archivo o carpeta"
+                        class="h-11 w-full rounded-lg border border-line bg-surface pl-10 pr-3 text-sm text-ink outline-none transition placeholder:text-muted focus:border-brand focus:ring-3 focus:ring-brand/10"
+                    >
+                </span>
+            </label>
+
+            <label class="xl:col-span-2">
+                <span class="mb-1.5 block text-xs font-semibold text-muted">Tipo</span>
+                <select name="type" class="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
+                    <option value="all" @selected($filters['type'] === 'all')>Todos</option>
+                    <option value="folder" @selected($filters['type'] === 'folder')>Carpetas</option>
+                    <option value="file" @selected($filters['type'] === 'file')>Archivos</option>
+                </select>
+            </label>
+
+            <label class="xl:col-span-3">
+                <span class="mb-1.5 block text-xs font-semibold text-muted">Clasificación</span>
+                <select name="visibility" class="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
+                    <option value="">Todas</option>
+                    @foreach (\App\Enums\FileVisibility::cases() as $visibility)
+                        <option value="{{ $visibility->value }}" @selected($filters['visibility'] === $visibility->value)>
+                            {{ $visibility->label() }}
+                        </option>
+                    @endforeach
+                </select>
+            </label>
+
+            <label class="xl:col-span-3">
+                <span class="mb-1.5 block text-xs font-semibold text-muted">Propietario</span>
+                <select name="owner_id" class="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
+                    <option value="">Todos</option>
+                    @foreach ($ownerOptions as $ownerOption)
+                        <option value="{{ $ownerOption['id'] }}" @selected((string) $filters['owner_id'] === (string) $ownerOption['id'])>
+                            {{ $ownerOption['name'] }}
+                        </option>
+                    @endforeach
+                </select>
+            </label>
+
+            <label class="xl:col-span-2">
+                <span class="mb-1.5 block text-xs font-semibold text-muted">Desde</span>
+                <input type="date" name="date_from" value="{{ $filters['date_from'] }}" class="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
+            </label>
+
+            <label class="xl:col-span-2">
+                <span class="mb-1.5 block text-xs font-semibold text-muted">Hasta</span>
+                <input type="date" name="date_to" value="{{ $filters['date_to'] }}" class="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
+            </label>
+
+            <label class="xl:col-span-2">
+                <span class="mb-1.5 block text-xs font-semibold text-muted">Ordenar por</span>
+                <select name="sort" class="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
+                    <option value="name" @selected($filters['sort'] === 'name')>Nombre</option>
+                    <option value="date" @selected($filters['sort'] === 'date')>Fecha</option>
+                    <option value="size" @selected($filters['sort'] === 'size')>Tamaño</option>
+                </select>
+            </label>
+
+            <label class="xl:col-span-2">
+                <span class="mb-1.5 block text-xs font-semibold text-muted">Dirección</span>
+                <select name="direction" class="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
+                    <option value="asc" @selected($filters['direction'] === 'asc')>Ascendente</option>
+                    <option value="desc" @selected($filters['direction'] === 'desc')>Descendente</option>
+                </select>
+            </label>
+
+            <label class="xl:col-span-2">
+                <span class="mb-1.5 block text-xs font-semibold text-muted">Por página</span>
+                <select name="per_page" class="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
+                    @foreach ([10, 25, 50] as $perPage)
+                        <option value="{{ $perPage }}" @selected((int) $filters['per_page'] === $perPage)>{{ $perPage }}</option>
+                    @endforeach
+                </select>
+            </label>
+
+            <div class="flex items-end xl:col-span-2">
+                <x-ui.button type="submit" class="h-11 w-full">
+                    Aplicar
+                </x-ui.button>
+            </div>
+        </form>
+    </section>
+
     <section aria-labelledby="explorer-items-title" class="overflow-hidden rounded-xl border border-line bg-surface">
         <div class="flex items-center justify-between border-b border-line px-4 py-4 sm:px-5">
             <h3 id="explorer-items-title" class="text-sm font-bold">
                 {{ $section === 'trash' ? 'Elementos eliminados' : 'Contenido' }}
             </h3>
-            <span class="text-xs text-muted">{{ $items->count() }} elementos</span>
+            <span class="text-xs text-muted">{{ $filteredItemCount }} elementos</span>
         </div>
 
         @if ($items->isEmpty())
@@ -512,10 +706,16 @@
                     <x-ui.icon :name="$section === 'trash' ? 'trash' : 'folder-open'" :size="32" alt="" />
                 </span>
                 <h4 class="mt-4 text-base font-bold">
-                    {{ $section === 'trash' ? 'La papelera está vacía' : 'Aún no hay contenido aquí' }}
+                    @if ($availableItemCount > 0)
+                        No encontramos coincidencias
+                    @else
+                        {{ $section === 'trash' ? 'La papelera está vacía' : 'Aún no hay contenido aquí' }}
+                    @endif
                 </h4>
                 <p class="mt-1 max-w-md text-sm leading-6 text-muted">
-                    @if ($section === 'mine')
+                    @if ($availableItemCount > 0)
+                        Ajusta los filtros o limpia la búsqueda para volver a ver todo el contenido.
+                    @elseif ($section === 'mine')
                         Crea una carpeta para comenzar a organizar tus archivos privados.
                     @elseif ($section === 'department')
                         El contenido colaborativo de tu departamento aparecerá en esta ubicación.
@@ -525,18 +725,22 @@
                         Los archivos y carpetas que elimines aparecerán temporalmente en esta sección.
                     @endif
                 </p>
-                @if ($canUploadFile || $canCreateFolder)
+                @if ($availableItemCount > 0)
+                    <a href="{{ url()->current() }}" class="mt-5 inline-flex rounded-lg border border-line px-4 py-2.5 text-sm font-semibold text-brand hover:bg-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand dark:text-white">
+                        Limpiar filtros
+                    </a>
+                @elseif ($canUploadFile || $canCreateFolder)
                     <div class="mt-5 flex flex-col gap-2 sm:flex-row">
                         @if ($canUploadFile)
                             <x-ui.button data-modal-open="upload-modal">
                                 <x-ui.icon name="upload-cloud" :size="18" alt="" />
-                                <span>Subir archivo</span>
+                                <span>{{ $currentFolder ? 'Agregar archivo' : 'Subir archivo' }}</span>
                             </x-ui.button>
                         @endif
                         @if ($canCreateFolder)
                             <x-ui.button variant="secondary" data-modal-open="folder-modal">
                                 <x-ui.icon name="folder-plus" :size="18" alt="" />
-                                <span>Crear carpeta</span>
+                                <span>{{ $currentFolder ? 'Nueva subcarpeta' : 'Crear carpeta' }}</span>
                             </x-ui.button>
                         @endif
                     </div>
@@ -719,4 +923,10 @@
             </div>
         @endif
     </section>
+
+    @if ($pagination->hasPages())
+        <nav class="mt-5" aria-label="Paginación del explorador">
+            {{ $pagination->onEachSide(1)->links() }}
+        </nav>
+    @endif
 </x-layouts.app>

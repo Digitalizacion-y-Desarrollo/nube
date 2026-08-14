@@ -34,6 +34,41 @@ class FolderManagementTest extends TestCase
             ->assertDontSee('Otra raíz');
     }
 
+    public function test_nested_folder_shows_actions_to_add_files_and_subfolders_in_place(): void
+    {
+        $user = User::factory()->create();
+        $parent = $this->folder($user, 'Expedientes');
+        $current = $this->folder($user, 'Contratos', $parent, '/Expedientes/Contratos');
+
+        $response = $this->authenticated($user, [
+            'nube_mis_archivos_ver',
+            'nube_mis_archivos_subir',
+            'nube_mis_archivos_crear_carpeta',
+        ])->get(route('folders.mine.show', $current));
+
+        $response
+            ->assertOk()
+            ->assertSee('data-current-folder-actions', false)
+            ->assertSee('Agregar en esta carpeta')
+            ->assertSee('Agregar archivo')
+            ->assertSee('Nueva subcarpeta')
+            ->assertSee('Agregar archivo en Contratos')
+            ->assertSee('Nueva subcarpeta en Contratos')
+            ->assertSee('name="folder_id"', false)
+            ->assertSee('name="parent_id"', false)
+            ->assertDontSee('type="hidden" name="parent_id"', false)
+            ->assertSee('Ubicación actual preseleccionada: /Expedientes/Contratos')
+            ->assertSee('value="'.$current->id.'" selected', false);
+
+        $this->assertSame(
+            2,
+            substr_count(
+                $response->getContent(),
+                'value="'.$current->id.'" selected',
+            ),
+        );
+    }
+
     public function test_user_cannot_open_another_users_private_folder_by_uuid(): void
     {
         $user = User::factory()->create();
@@ -50,7 +85,7 @@ class FolderManagementTest extends TestCase
         $user = User::factory()->create();
         $parent = $this->folder($user, 'Expedientes', null, '/Expedientes');
 
-        $this->authenticated($user, ['nube_mis_archivos_crear_carpeta'])
+        $this->authenticated($user, ['nube_archivos_crear_carpeta'])
             ->post(route('folders.store'), [
                 'name' => '  Personal  ',
                 'parent_id' => $parent->id,

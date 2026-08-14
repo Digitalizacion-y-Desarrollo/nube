@@ -45,7 +45,18 @@ class FileController extends Controller
                 $visibility,
                 $collaborationScope,
                 $request->validated('collaborators', []),
+                $request->validated('collaborator_permissions', []),
             );
+
+            if ($collaborationScope === CollaborationScope::Selected) {
+                $this->auditFile($request, 'file.sharing_configured', $file, [
+                    'collaborator_ids' => $request->validated('collaborators', []),
+                    'collaborator_permissions' => $request->validated(
+                        'collaborator_permissions',
+                        [],
+                    ),
+                ]);
+            }
 
             return back()->with('status', "El archivo «{$file->display_name}» fue cargado.");
         } catch (Throwable $exception) {
@@ -149,7 +160,18 @@ class FileController extends Controller
                 $visibility,
                 $collaborationScope,
                 $request->validated('collaborators', []),
+                $request->validated('collaborator_permissions', []),
             );
+
+            if ($collaborationScope === CollaborationScope::Selected) {
+                $this->auditFile($request, 'file.sharing_configured', $file, [
+                    'collaborator_ids' => $request->validated('collaborators', []),
+                    'collaborator_permissions' => $request->validated(
+                        'collaborator_permissions',
+                        [],
+                    ),
+                ]);
+            }
 
             return back()->with(
                 'status',

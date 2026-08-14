@@ -85,6 +85,7 @@ Representa la copia local de los usuarios del sistema de accesos.
 | `last_name` | `VARCHAR(150)` | NULL | Apellidos |
 | `email` | `VARCHAR(255)` | UNIQUE, NOT NULL | Correo electrónico |
 | `active` | `BOOLEAN` | DEFAULT true | Estado del usuario |
+| `avatar_path` | `VARCHAR(500)` | NULL | Ruta relativa de la foto de perfil en el disco privado; dato local, no proviene de Accesos |
 | `last_login_at` | `TIMESTAMP` | NULL | Último inicio de sesión |
 | `last_synced_at` | `TIMESTAMP` | NULL | Última sincronización |
 | `created_at` | `TIMESTAMP` | NOT NULL | Fecha de creación |
@@ -125,6 +126,7 @@ Ejemplos de roles:
 administrador
 empleado
 supervisor
+superuser
 ```
 
 ---
@@ -228,6 +230,7 @@ Representa las carpetas lógicas del sistema.
 | `created_at` | `TIMESTAMP` | NOT NULL | Fecha de creación |
 | `updated_at` | `TIMESTAMP` | NOT NULL | Fecha de actualización |
 | `deleted_at` | `TIMESTAMP` | NULL | Eliminación lógica |
+| `deleted_by` | `BIGINT UNSIGNED` | NULL | Usuario que envió la carpeta a la papelera; `ON DELETE SET NULL` |
 
 ### Valores permitidos para `visibility`
 
@@ -282,6 +285,7 @@ Almacena los metadatos de los archivos. El archivo físico se guarda en el almac
 | `created_at` | `TIMESTAMP` | NOT NULL | Fecha de creación |
 | `updated_at` | `TIMESTAMP` | NOT NULL | Fecha de actualización |
 | `deleted_at` | `TIMESTAMP` | NULL | Eliminación lógica |
+| `deleted_by` | `BIGINT UNSIGNED` | NULL | Usuario que envió el archivo a la papelera; `ON DELETE SET NULL` |
 
 ### Relaciones
 
@@ -319,6 +323,23 @@ Cada tabla utiliza una llave primaria compuesta por el recurso y el usuario.
 Las relaciones solo se consultan cuando `collaboration_scope` es `selected`;
 con `department`, todas las personas autorizadas del departamento tienen
 acceso.
+
+Ambas tablas conservan permisos internos por colaborador. Estos permisos no
+forman parte del catálogo del API de accesos:
+
+| Campo | Tipo de dato | Valor inicial | Descripción |
+|---|---|---|---|
+| `can_view` | `BOOLEAN` | `TRUE` | Permite encontrar y abrir el recurso |
+| `can_download` | `BOOLEAN` | `TRUE` | Permite descargar el archivo; en carpetas se hereda como valor inicial de archivos nuevos |
+| `can_rename` | `BOOLEAN` | `FALSE` | Permite editar el nombre visible |
+| `can_move` | `BOOLEAN` | `FALSE` | Permite mover el recurso a una ubicación compatible |
+| `can_delete` | `BOOLEAN` | `FALSE` | Permite enviar el recurso a la papelera |
+
+La autorización efectiva combina el permiso funcional recibido del API con el
+permiso interno del recurso. El propietario conserva control total y
+`admin_area` mantiene su excepción de alcance sobre contenido de su
+departamento. Las filas históricas reciben `can_view = TRUE` y
+`can_download = TRUE` para conservar el comportamiento previo.
 
 La visibilidad de una carpeta y la de sus elementos son independientes. Una
 carpeta pública puede contener archivos públicos, privados o colaborativos sin
@@ -477,6 +498,7 @@ INDEX owner_id
 INDEX department_id
 INDEX visibility
 INDEX deleted_at
+INDEX deleted_by
 UNIQUE parent_id, owner_id, name, deleted_at
 ```
 
@@ -490,6 +512,7 @@ INDEX department_id
 INDEX visibility
 INDEX uploaded_at
 INDEX deleted_at
+INDEX deleted_by
 ```
 
 ## `audit_logs`
@@ -517,9 +540,12 @@ Cada vez que un usuario inicie sesión correctamente, Laravel deberá:
 8. Actualizar `last_synced_at`.
 
 Los roles se conservan como información de perfil y auditoría. La autorización
-se realiza exclusivamente con los permisos efectivos. Al sincronizar un
-usuario se retiran sus asignaciones obsoletas, pero no se eliminan globalmente
-registros de `permissions` que puedan estar asignados a otras personas.
+funcional se realiza exclusivamente con los permisos efectivos. Como excepción
+acotada, el rol `superuser` habilita la entrada al panel administrativo de
+consulta bajo `/admin`, pero no concede acciones sobre archivos o carpetas. Al
+sincronizar un usuario se retiran sus asignaciones obsoletas, pero no se
+eliminan globalmente registros de `permissions` que puedan estar asignados a
+otras personas.
 
 No se actualizarán todos los usuarios en cada inicio de sesión. Solo se sincronizarán los datos relacionados con el usuario autenticado.
 

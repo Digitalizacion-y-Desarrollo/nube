@@ -7,8 +7,8 @@ use App\Enums\FileVisibility;
 use App\Models\File;
 use App\Models\Folder;
 use App\Models\User;
+use App\Services\Sharing\CollaboratorPermissionService;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -17,6 +17,10 @@ use Throwable;
 
 class FileStorageService
 {
+    public function __construct(
+        private readonly CollaboratorPermissionService $collaboratorPermissions,
+    ) {}
+
     public function upload(
         UploadedFile $upload,
         User $owner,
@@ -24,10 +28,17 @@ class FileStorageService
         FileVisibility $visibility = FileVisibility::Private,
         ?CollaborationScope $collaborationScope = null,
         array $collaboratorIds = [],
+        array $permissionsByUser = [],
     ): File {
         $extension = strtolower($upload->getClientOriginalExtension());
         $storedName = Str::uuid()->toString().($extension === '' ? '' : ".{$extension}");
-        $directory = $this->directoryFor($owner, $folder, $visibility);
+        $departmentId = $folder?->department_id ?? $owner->department_id;
+        $directory = $this->directoryFor(
+            $owner,
+            $folder,
+            $visibility,
+            $departmentId,
+        );
         $path = Storage::disk('nube')->putFileAs($directory, $upload, $storedName);
 
         if (! is_string($path) || $path === '') {
@@ -45,11 +56,13 @@ class FileStorageService
                 $visibility,
                 $collaborationScope,
                 $collaboratorIds,
+                $permissionsByUser,
+                $departmentId,
             ): File {
                 $file = File::query()->create([
                     'folder_id' => $folder?->id,
                     'owner_id' => $owner->id,
-                    'department_id' => $owner->department_id,
+                    'department_id' => $departmentId,
                     'original_name' => $this->safeOriginalName($upload),
                     'display_name' => $this->safeOriginalName($upload),
                     'stored_name' => $storedName,
@@ -69,7 +82,10 @@ class FileStorageService
                 $file->collaborators()->sync(
                     $visibility === FileVisibility::Collaborative
                         && $collaborationScope === CollaborationScope::Selected
-                            ? $this->collaboratorPivot($collaboratorIds)
+                            ? $this->collaboratorPermissions->pivotData(
+                                $collaboratorIds,
+                                $permissionsByUser,
+                            )
                             : [],
                 );
 
@@ -183,16 +199,23 @@ class FileStorageService
         FileVisibility $visibility,
         ?CollaborationScope $collaborationScope = null,
         array $collaboratorIds = [],
+        array $permissionsByUser = [],
     ): File {
         $oldPath = $file->path;
-        $newPath = $this->directoryFor(
-            $file->owner,
-            null,
-            $visibility,
-            $file->department_id,
-        ).'/'.$file->stored_name;
+        $sameVisibility = $file->visibility === $visibility;
+        $newPath = $sameVisibility
+            ? $oldPath
+            : $this->directoryFor(
+                $file->owner,
+                null,
+                $visibility,
+                $file->department_id,
+            ).'/'.$file->stored_name;
+        $physicalMoveRequired = $oldPath !== $newPath;
 
-        $this->movePhysicalFile($file->disk, $oldPath, $newPath);
+        if ($physicalMoveRequired) {
+            $this->movePhysicalFile($file->disk, $oldPath, $newPath);
+        }
 
         try {
             return DB::transaction(function () use (
@@ -201,9 +224,11 @@ class FileStorageService
                 $newPath,
                 $collaborationScope,
                 $collaboratorIds,
+                $permissionsByUser,
+                $sameVisibility,
             ): File {
                 $file->update([
-                    'folder_id' => null,
+                    'folder_id' => $sameVisibility ? $file->folder_id : null,
                     'visibility' => $visibility,
                     'collaboration_scope' => $visibility === FileVisibility::Collaborative
                         ? ($collaborationScope ?? CollaborationScope::Department)
@@ -214,14 +239,19 @@ class FileStorageService
                 $file->collaborators()->sync(
                     $visibility === FileVisibility::Collaborative
                         && $collaborationScope === CollaborationScope::Selected
-                            ? $this->collaboratorPivot($collaboratorIds)
+                            ? $this->collaboratorPermissions->pivotData(
+                                $collaboratorIds,
+                                $permissionsByUser,
+                            )
                             : [],
                 );
 
                 return $file->refresh();
             });
         } catch (Throwable $exception) {
-            $this->rollbackPhysicalMove($file->disk, $newPath, $oldPath);
+            if ($physicalMoveRequired) {
+                $this->rollbackPhysicalMove($file->disk, $newPath, $oldPath);
+            }
 
             throw $exception;
         }
@@ -295,18 +325,5 @@ class FileStorageService
         if ($filesystem->exists($from) && ! $filesystem->exists($to)) {
             $filesystem->move($from, $to);
         }
-    }
-
-    /**
-     * @param  list<int>  $collaboratorIds
-     * @return array<int, array{created_at: Carbon}>
-     */
-    private function collaboratorPivot(array $collaboratorIds): array
-    {
-        return collect($collaboratorIds)
-            ->mapWithKeys(fn (int $id): array => [
-                $id => ['created_at' => now()],
-            ])
-            ->all();
     }
 }

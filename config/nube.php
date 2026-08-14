@@ -3,6 +3,12 @@
 return [
     'trash_retention_days' => (int) env('NUBE_TRASH_RETENTION_DAYS', 30),
 
+    'avatars' => [
+        'max_size_kb' => (int) env('NUBE_AVATAR_MAX_SIZE_KB', 10240),
+        'extensions' => ['jpg', 'jpeg', 'png'],
+        'mime_types' => ['image/jpeg', 'image/png'],
+    ],
+
     'files' => [
         'max_size_kb' => (int) env('NUBE_MAX_FILE_SIZE_KB', 204800),
         'extensions' => [

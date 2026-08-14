@@ -4,13 +4,11 @@
             <img src="{{ asset('assets/figma/login-circle-1.svg') }}" alt="" class="pointer-events-none absolute -right-[30px] -top-10 size-[180px] lg:-right-[120px] lg:top-[120px] lg:size-[360px]">
             <img src="{{ asset('assets/figma/login-circle-2.svg') }}" alt="" class="pointer-events-none absolute -bottom-9 -left-[60px] size-[200px] lg:-bottom-[120px] lg:-left-[140px] lg:size-[420px]">
 
-            <img
-                src="{{ asset('assets/figma/logo-nezahualcoyotl.png') }}"
-                alt="Escudo del H. Ayuntamiento de Nezahualcóyotl"
-                width="120"
+            <x-ui.brand-logo
+                width="135"
                 height="90"
-                class="relative z-10 h-[60px] w-20 object-cover lg:h-[90px] lg:w-[120px]"
-            >
+                class="relative z-10 h-[60px] w-[90px] rounded-lg shadow-lg lg:h-[90px] lg:w-[135px]"
+            />
 
             <div class="absolute left-6 right-6 top-[97px] z-10 flex items-center justify-between lg:static lg:block">
                 <div class="inline-flex items-center gap-2 rounded-[10px] border border-gold bg-white/[0.08] px-3 py-2 lg:px-3.5 lg:py-2.5">
@@ -25,7 +23,7 @@
 
             <div class="absolute left-6 right-6 top-[157px] z-10 lg:static lg:max-w-[592px]">
                 <div class="mb-2 flex items-center gap-2 lg:block">
-                    <span class="flex size-6 items-center justify-center rounded bg-white/10 text-[10px] font-extrabold text-gold lg:hidden">NE</span>
+                    <x-ui.brand-logo alt="" width="36" height="24" class="h-6 w-9 rounded lg:hidden" />
                     <p class="text-[11px] font-bold uppercase text-gold lg:mb-2.5 lg:text-sm">H. Ayuntamiento</p>
                 </div>
                 <h1 class="text-[28px] font-bold leading-[1.1] lg:text-[44px]">Nube Empresarial</h1>
@@ -53,7 +51,7 @@
 
         <section class="relative flex min-h-[520px] flex-col items-center bg-white px-6 py-6 lg:min-h-screen lg:justify-between lg:px-20 lg:py-12">
             <div class="hidden items-center gap-2 lg:flex">
-                <span class="flex size-8 items-center justify-center rounded-md bg-brand text-sm font-extrabold text-gold">NE</span>
+                <x-ui.brand-logo alt="" width="48" height="32" class="h-8 w-12 rounded-md" />
                 <span class="text-xs font-bold text-[#4b5563]">NUBE EMPRESARIAL</span>
             </div>
 

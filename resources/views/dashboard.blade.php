@@ -1,10 +1,20 @@
 <x-layouts.app title="Inicio" :user="$user" :permissions="$permissions">
+    @php
+        $isAdministrator = in_array('nube_administracion_administrar', $permissions, true);
+        $canUploadPrivate = $isAdministrator
+            || in_array('nube.archivos.subir', $permissions, true)
+            || in_array('nube_mis_archivos_subir', $permissions, true);
+        $canCreatePrivateFolder = $isAdministrator
+            || in_array('nube_archivos_crear_carpeta', $permissions, true)
+            || in_array('nube_mis_archivos_crear_carpeta', $permissions, true);
+    @endphp
+
     <section class="mb-5 lg:mb-6">
         <h2 class="text-[22px] font-bold text-brand dark:text-white lg:text-[28px] lg:text-ink lg:dark:text-white">Buenos días, {{ $user['first_name'] }}</h2>
         <div class="mt-1 flex flex-wrap items-center gap-2 text-xs lg:text-sm">
-            <span class="font-semibold text-gold dark:text-white lg:text-brand lg:dark:text-white">Departamento de {{ $user['department'] }}</span>
+            <span class="font-semibold text-gold-ink dark:text-gold lg:text-brand lg:dark:text-white">Departamento de {{ $user['department'] }}</span>
             <span class="size-1 rounded-full bg-gold"></span>
-            <span class="text-muted">23 de julio de 2026</span>
+            <span class="text-muted">{{ $today }}</span>
         </div>
         <p class="mt-1 hidden text-[13px] text-muted lg:block">Aquí tienes un resumen de tu actividad y accesos rápidos.</p>
     </section>
@@ -12,20 +22,24 @@
     <section aria-labelledby="quick-actions-title" class="mb-5 lg:mb-6">
         <h3 id="quick-actions-title" class="mb-2.5 text-sm font-bold uppercase text-ink lg:sr-only">Acciones rápidas</h3>
         <div class="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap lg:gap-3">
-            <x-ui.button data-modal-open="upload-modal" class="h-12 justify-start px-3 lg:h-auto lg:justify-center lg:px-5">
-                <span class="flex size-7 items-center justify-center rounded-md bg-brand lg:hidden">
-                    <x-ui.icon name="upload-mobile" :size="16" alt="" />
-                </span>
-                <x-ui.icon name="upload-cloud" :size="18" alt="" class="hidden lg:block" />
-                <span>Subir archivo</span>
-            </x-ui.button>
-            <x-ui.button variant="outline" data-modal-open="folder-modal" class="h-12 justify-start px-3 lg:h-auto lg:justify-center lg:px-5">
-                <span class="flex size-7 items-center justify-center rounded-md bg-brand lg:hidden">
-                    <x-ui.icon name="folder-plus-mobile" :size="16" alt="" />
-                </span>
-                <x-ui.icon name="folder-plus" :size="18" alt="" class="hidden lg:block" />
-                <span>Nueva carpeta</span>
-            </x-ui.button>
+            @if ($canUploadPrivate)
+                <a href="{{ route('folders.mine', ['open' => 'upload']) }}" class="inline-flex h-12 items-center justify-start gap-2 rounded-[10px] bg-brand px-3 text-sm font-semibold text-white transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold lg:h-auto lg:justify-center lg:px-5 lg:py-2.5">
+                    <span class="flex size-7 items-center justify-center rounded-md bg-brand lg:hidden">
+                        <x-ui.icon name="upload-mobile" :size="16" alt="" />
+                    </span>
+                    <x-ui.icon name="upload-cloud" :size="18" alt="" class="hidden lg:block" />
+                    <span>Subir archivo</span>
+                </a>
+            @endif
+            @if ($canCreatePrivateFolder)
+                <a href="{{ route('folders.mine', ['open' => 'folder']) }}" class="inline-flex h-12 items-center justify-start gap-2 rounded-[10px] border border-gold bg-warm px-3 text-sm font-semibold text-brand transition hover:bg-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold dark:text-white lg:h-auto lg:justify-center lg:border-line lg:bg-surface lg:px-5 lg:py-2.5 lg:text-ink">
+                    <span class="flex size-7 items-center justify-center rounded-md bg-brand lg:hidden">
+                        <x-ui.icon name="folder-plus-mobile" :size="16" alt="" />
+                    </span>
+                    <x-ui.icon name="folder-plus" :size="18" alt="" class="hidden lg:block" />
+                    <span>Nueva carpeta</span>
+                </a>
+            @endif
             @if (in_array('nube_mis_archivos_ver', $permissions, true) || in_array('nube_administracion_administrar', $permissions, true))
                 <a href="{{ route('folders.mine') }}" class="inline-flex h-12 items-center justify-start gap-2 rounded-[10px] border border-gold bg-warm px-3 text-sm font-semibold text-brand transition hover:bg-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold dark:text-white lg:h-auto lg:justify-center lg:border-line lg:bg-surface lg:px-5 lg:py-2.5 lg:text-ink">
                     <span class="flex size-7 items-center justify-center rounded-md bg-brand lg:hidden">
@@ -69,12 +83,12 @@
         <div class="mb-3 flex items-center justify-between lg:mb-0 lg:rounded-t-xl lg:border lg:border-line lg:bg-surface lg:p-5">
             <h3 id="recent-files-title" class="text-sm font-bold uppercase text-ink lg:text-[15px] lg:normal-case">Archivos Recientes</h3>
             @if (in_array('nube_mis_archivos_ver', $permissions, true) || in_array('nube_administracion_administrar', $permissions, true))
-                <a href="{{ route('folders.mine') }}" class="text-xs font-semibold text-gold underline-offset-4 hover:underline lg:text-[13px]">Ver todos</a>
+                <a href="{{ route('folders.mine') }}" class="text-xs font-semibold text-gold-ink underline-offset-4 hover:underline dark:text-gold lg:text-[13px]">Ver todos</a>
             @endif
         </div>
 
         <div class="space-y-2 lg:hidden">
-            @foreach (array_slice($files, 0, 3) as $file)
+            @forelse (array_slice($files, 0, 3) as $file)
                 <article class="flex items-center gap-3 rounded-[10px] border border-line bg-surface p-3">
                     <span @class([
                         'flex size-9 shrink-0 items-center justify-center rounded-lg',
@@ -95,11 +109,15 @@
                     <span @class([
                         'rounded-md px-2 py-1 text-[10px] font-semibold',
                         'bg-brand/10 text-brand dark:bg-white/10 dark:text-white' => $file['tone'] === 'private',
-                        'bg-gold/10 text-gold' => $file['tone'] === 'collaborative',
+                        'bg-gold/10 text-gold-ink dark:text-gold' => $file['tone'] === 'collaborative',
                         'bg-emerald-50 text-emerald-600' => $file['tone'] === 'public',
                     ])>{{ $file['visibility'] }}</span>
                 </article>
-            @endforeach
+            @empty
+                <div class="rounded-[10px] border border-dashed border-line bg-surface px-4 py-8 text-center text-sm text-muted">
+                    No hay archivos recientes disponibles.
+                </div>
+            @endforelse
         </div>
 
         <div class="hidden overflow-hidden rounded-b-xl border-x border-b border-line bg-surface lg:block">
@@ -115,7 +133,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-line">
-                    @foreach ($files as $file)
+                    @forelse ($files as $file)
                         <tr class="text-[13px] transition hover:bg-warm">
                             <td class="px-5 py-3">
                                 <span class="flex min-w-0 items-center gap-3">
@@ -135,12 +153,20 @@
                             <td class="px-5 py-3 text-muted">{{ $file['modified'] }}</td>
                             <td class="px-5 py-3 text-muted">{{ $file['size'] }}</td>
                             <td class="px-5 py-3">
-                                <button type="button" class="ml-auto flex size-8 items-center justify-center rounded-full hover:bg-soft" aria-label="Acciones para {{ $file['name'] }}">
-                                    <x-ui.icon name="more-horizontal" :size="16" alt="" />
-                                </button>
+                                @if ($file['download_url'])
+                                    <a href="{{ $file['download_url'] }}" class="ml-auto flex size-8 items-center justify-center rounded-full hover:bg-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" aria-label="Descargar {{ $file['name'] }}">
+                                        <x-ui.icon name="arrow-down" :size="16" alt="" />
+                                    </a>
+                                @endif
                             </td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-5 py-10 text-center text-sm text-muted">
+                                No hay archivos recientes disponibles.
+                            </td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -150,11 +176,13 @@
         <section aria-labelledby="recent-folders-title" class="hidden overflow-hidden rounded-xl border border-line bg-surface lg:block">
             <div class="flex items-center justify-between border-b border-line p-5">
                 <h3 id="recent-folders-title" class="text-[15px] font-bold">Carpetas Recientes</h3>
-                <a href="#" class="text-[13px] font-semibold text-gold underline">Ver todas</a>
+                @if (in_array('nube_mis_archivos_ver', $permissions, true) || $isAdministrator)
+                    <a href="{{ route('folders.mine') }}" class="text-[13px] font-semibold text-gold-ink underline dark:text-gold">Ver todas</a>
+                @endif
             </div>
             <div class="divide-y divide-line">
-                @foreach ($folders as $folder)
-                    <a href="#" class="flex items-center justify-between px-5 py-3 hover:bg-warm">
+                @forelse ($folders as $folder)
+                    <a href="{{ $folder['url'] }}" class="flex items-center justify-between px-5 py-3 hover:bg-warm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand">
                         <span class="flex items-center gap-3">
                             <x-ui.icon name="folder" :size="20" alt="" />
                             <span>
@@ -167,7 +195,9 @@
                             <x-ui.icon name="chevron-right" :size="16" alt="" />
                         </span>
                     </a>
-                @endforeach
+                @empty
+                    <p class="px-5 py-10 text-center text-sm text-muted">No hay carpetas recientes disponibles.</p>
+                @endforelse
             </div>
         </section>
 
@@ -178,7 +208,7 @@
                     <h3 class="text-[15px] font-bold">Actividad Reciente</h3>
                 </div>
                 <div class="divide-y divide-line px-4 py-2 lg:px-0 lg:py-0">
-                    @foreach ($activities as $activity)
+                    @forelse ($activities as $activity)
                         <div class="flex items-center gap-3 py-2.5 lg:px-5 lg:py-3">
                             <span class="flex size-7 shrink-0 items-center justify-center rounded-md bg-soft">
                                 <x-ui.icon :name="$activity['icon']" :size="14" alt="" />
@@ -188,7 +218,9 @@
                                 <span class="block text-[11px] text-muted">{{ $activity['time'] }}</span>
                             </span>
                         </div>
-                    @endforeach
+                    @empty
+                        <p class="px-5 py-10 text-center text-sm text-muted">Tu actividad reciente aparecerá aquí.</p>
+                    @endforelse
                 </div>
             </div>
         </section>

@@ -28,6 +28,8 @@ class InterfaceTest extends TestCase
             ->assertSee('Nube Municipal')
             ->assertSee('Buenos días, Carlos')
             ->assertSee('Archivos Recientes')
+            ->assertSee('assets/img/logo_nube.png', false)
+            ->assertDontSee('assets/figma/logo-nezahualcoyotl.png', false)
             ->assertSee('data-theme-toggle', false);
     }
 
@@ -38,6 +40,8 @@ class InterfaceTest extends TestCase
             ->assertSee('Nube Empresarial')
             ->assertSee('Iniciar Sesión')
             ->assertSee('Correo electrónico')
+            ->assertSee('assets/img/logo_nube.png', false)
+            ->assertDontSee('assets/figma/logo-nezahualcoyotl.png', false)
             ->assertSee('Mantener mi sesión iniciada')
             ->assertSee('¿Olvidaste tu contraseña?');
     }

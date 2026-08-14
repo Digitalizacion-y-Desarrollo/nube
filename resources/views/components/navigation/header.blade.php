@@ -9,7 +9,7 @@
             <x-ui.icon name="menu" :size="24" alt="" />
         </button>
         <div class="flex items-center gap-2">
-            <span class="flex size-8 items-center justify-center rounded-lg bg-brand text-sm font-extrabold text-white">NE</span>
+            <x-ui.brand-logo alt="" width="48" height="32" class="h-8 w-12 rounded-md" />
             <span class="hidden font-bold text-brand dark:text-white sm:block">Nube Municipal</span>
         </div>
     </div>
@@ -17,17 +17,22 @@
     <h1 class="hidden text-lg font-bold text-brand dark:text-white lg:block">{{ $title }}</h1>
 
     <div class="flex items-center gap-2 sm:gap-3 lg:gap-5">
-        <label class="hidden w-80 items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 lg:flex">
-            <x-ui.icon name="search" :size="16" alt="" />
-            <span class="sr-only">Buscar</span>
-            <input type="search" placeholder="Buscar archivos, carpetas o departamentos..." class="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-muted">
-        </label>
+        <button
+            type="button"
+            data-global-search-open
+            class="group flex size-10 items-center justify-center rounded-full border border-line bg-surface text-muted hover:border-gold hover:bg-warm hover:text-brand focus-visible:outline-brand dark:hover:text-white lg:h-10 lg:w-80 lg:justify-start lg:gap-2 lg:rounded-full lg:px-4"
+            aria-label="Abrir búsqueda global"
+            aria-haspopup="dialog"
+            aria-controls="global-search"
+            aria-expanded="false"
+        >
+            <x-ui.icon name="search" :size="17" alt="" />
+            <span class="hidden flex-1 text-left text-[13px] text-muted lg:block">Buscar archivos y carpetas...</span>
+            <kbd class="hidden rounded-md border border-line bg-soft px-2 py-1 text-[10px] font-semibold text-muted lg:inline-flex">⌘ K</kbd>
+        </button>
         <x-ui.theme-toggle />
-        <button type="button" class="flex size-10 items-center justify-center rounded-full border border-line bg-surface hover:border-gold" aria-label="Notificaciones">
-            <x-ui.icon name="bell" :size="20" alt="" />
-        </button>
-        <button type="button" aria-label="Abrir perfil">
-            <img src="{{ asset('assets/figma/avatar-small.png') }}" alt="" width="36" height="36" class="size-9 rounded-full object-cover">
-        </button>
+        <a href="{{ route('profile.edit') }}" class="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" title="Editar foto de perfil">
+            <img src="{{ $user['avatar'] ?? asset('assets/figma/avatar-small.png') }}" alt="Foto de perfil de {{ $user['name'] ?? 'usuario' }}" width="36" height="36" class="size-9 rounded-full object-cover ring-1 ring-line">
+        </a>
     </div>
 </header>

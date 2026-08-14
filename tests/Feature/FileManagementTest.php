@@ -25,7 +25,7 @@ class FileManagementTest extends TestCase
         $user = User::factory()->create();
         $folder = $this->folder($user, 'Contratos');
 
-        $this->authenticated($user, ['nube_mis_archivos_subir'])
+        $this->authenticated($user, ['nube.archivos.subir'])
             ->post(route('files.store'), [
                 'file' => UploadedFile::fake()->create(
                     'contrato.pdf',
@@ -186,7 +186,7 @@ class FileManagementTest extends TestCase
         $user = User::factory()->create();
         $file = $this->storedFile($user, 'reporte.pdf');
 
-        $this->authenticated($user, ['nube_mis_archivos_descargar'])
+        $this->authenticated($user, ['nube.archivos.descargar'])
             ->get(route('files.download', $file))
             ->assertOk()
             ->assertDownload('reporte.pdf');
@@ -332,7 +332,7 @@ class FileManagementTest extends TestCase
         $file = $this->storedFile($user, 'temporal.pdf');
         $oldPath = $file->path;
 
-        $this->authenticated($user, ['nube_mis_archivos_eliminar'])
+        $this->authenticated($user, ['nube.archivos.eliminar'])
             ->delete(route('files.destroy', $file))
             ->assertRedirect()
             ->assertSessionHas('status');

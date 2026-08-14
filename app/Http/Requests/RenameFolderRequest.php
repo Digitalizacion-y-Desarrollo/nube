@@ -65,7 +65,7 @@ class RenameFolderRequest extends FormRequest
         $folder = $this->route('folder');
 
         return Folder::query()
-            ->where('owner_id', $this->user()->id)
+            ->where('owner_id', $folder->owner_id)
             ->where('parent_id', $folder->parent_id)
             ->whereKeyNot($folder->id)
             ->whereRaw('LOWER(name) = ?', [Str::lower($name)])

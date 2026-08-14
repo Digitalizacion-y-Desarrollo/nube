@@ -230,7 +230,12 @@ storage/app/nube/areas/{area_id}/colaborativos/
 
 Para el MVP:
 
-- Los miembros del área podrán visualizar y descargar.
+- En colaboración para toda el área, los miembros podrán visualizar y
+  descargar.
+- En colaboración con personas específicas, el propietario podrá asignar
+  permisos internos de ver, descargar, renombrar, mover y eliminar por
+  colaborador. Estos permisos permanecerán en Nube Municipal y se combinarán
+  con los permisos funcionales del sistema de accesos.
 - Solo el propietario podrá renombrar o eliminar.
 
 ### 5.3 Público interno
@@ -366,9 +371,11 @@ nube_administracion_administrar
 
 Los 28 permisos del MVP están agrupados por recurso en la Fase 3 del plan de
 desarrollo. Nube Municipal los sincroniza dinámicamente durante el login y no
-mantiene un catálogo fijo en producción. Los roles son informativos; los
-permisos efectivos autorizan las capacidades y las Policies locales deciden si
-el usuario puede operar sobre un archivo o carpeta específicos.
+mantiene un catálogo fijo en producción. Los permisos efectivos autorizan las
+capacidades y las Policies locales deciden si el usuario puede operar sobre un
+archivo o carpeta específicos. Los roles son informativos salvo el rol
+`superuser`, utilizado únicamente para habilitar el panel administrativo de
+consulta; este rol no sustituye permisos funcionales.
 
 ---
 
@@ -536,6 +543,11 @@ usuario también puede adelantar esta acción mediante confirmación explícita.
 - Mensajes de confirmación y error.
 - Migraciones y seeders.
 - Instrucciones de instalación.
+- Panel administrativo de consulta para el rol `superuser`, con resumen,
+  archivos, departamentos, usuarios, papelera, auditoría y configuración.
+- Dashboard administrativo con totales activos y eliminados, espacio utilizado,
+  distribución por visibilidad, actividad y rankings de consumo por usuario y
+  departamento.
 
 ---
 
@@ -560,7 +572,8 @@ Para garantizar la entrega del viernes 31 de julio, no se incluirán:
 - Aplicación móvil.
 - Sincronización de escritorio.
 - Carga fragmentada.
-- Panel administrativo avanzado.
+- Panel administrativo avanzado con edición de usuarios, departamentos o
+  configuración.
 - Cuotas individuales o departamentales.
 
 ---

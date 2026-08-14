@@ -1,5 +1,8 @@
 # Nube Municipal
 
+La matriz final de rutas, Policies, permisos, auditoría y endurecimiento de
+producción está en [docs/SEGURIDAD_Y_AUDITORIA.md](docs/SEGURIDAD_Y_AUDITORIA.md).
+
 MVP de una plataforma interna para almacenar, organizar y administrar archivos
 privados, colaborativos y públicos internos.
 
@@ -67,6 +70,13 @@ claro y oscuro, respeta la preferencia del sistema y conserva la selección en
 el navegador. El login responsive y sus estados están adaptados de la sección
 `32:2` y del frame `13:11`; el resto de la interfaz parte de los nodos
 `15:598` y `15:1219` del archivo aprobado en Figma.
+
+El dashboard utiliza datos reales de archivos, carpetas y auditoría. El
+encabezado incluye una búsqueda global en tiempo real, accesible también con
+`Ctrl/⌘ + K`, que presenta resultados autorizados en un panel tipo Spotlight.
+El explorador permite además filtrar por tipo, clasificación, propietario y
+fechas, ordenar por nombre, fecha o tamaño y paginar conservando la ubicación y
+todos los parámetros activos.
 
 ## Modelo de datos
 

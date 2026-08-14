@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CollaborationScope;
+use App\Enums\CollaboratorPermission;
 use App\Enums\FileVisibility;
+use App\Http\Requests\BrowseExplorerRequest;
 use App\Http\Requests\ChangeFolderVisibilityRequest;
+use App\Http\Requests\MoveFolderRequest;
 use App\Http\Requests\RenameFolderRequest;
 use App\Http\Requests\StoreFolderRequest;
 use App\Models\AuditLog;
@@ -14,9 +17,13 @@ use App\Models\User;
 use App\Services\Access\DepartmentCollaboratorService;
 use App\Services\Access\Exceptions\AccessApiException;
 use App\Services\Folders\FolderPathService;
+use App\Services\Sharing\CollaboratorPermissionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use LogicException;
@@ -26,9 +33,10 @@ class FolderController extends Controller
     public function __construct(
         private readonly FolderPathService $paths,
         private readonly DepartmentCollaboratorService $departmentCollaborators,
+        private readonly CollaboratorPermissionService $collaboratorPermissions,
     ) {}
 
-    public function mine(Request $request, ?Folder $folder = null): View
+    public function mine(BrowseExplorerRequest $request, ?Folder $folder = null): View
     {
         if ($folder !== null) {
             $this->guardFolderForSection($request, $folder, 'mine');
@@ -55,7 +63,7 @@ class FolderController extends Controller
         );
     }
 
-    public function department(Request $request, ?Folder $folder = null): View
+    public function department(BrowseExplorerRequest $request, ?Folder $folder = null): View
     {
         if ($folder !== null) {
             $this->guardFolderForSection($request, $folder, 'department');
@@ -82,7 +90,7 @@ class FolderController extends Controller
         );
     }
 
-    public function public(Request $request, ?Folder $folder = null): View
+    public function public(BrowseExplorerRequest $request, ?Folder $folder = null): View
     {
         if ($folder !== null) {
             $this->guardFolderForSection($request, $folder, 'public');
@@ -107,7 +115,7 @@ class FolderController extends Controller
         );
     }
 
-    public function trash(Request $request): View
+    public function trash(BrowseExplorerRequest $request): View
     {
         $folders = Folder::onlyTrashed()
             ->where('owner_id', $request->user()->id)
@@ -153,7 +161,8 @@ class FolderController extends Controller
             $folder = Folder::query()->create([
                 'parent_id' => $parent?->id,
                 'owner_id' => $request->user()->id,
-                'department_id' => $request->user()->department_id,
+                'department_id' => $parent?->department_id
+                    ?? $request->user()->department_id,
                 'name' => $validated['name'],
                 'visibility' => $visibility,
                 'collaboration_scope' => $collaborationScope,
@@ -163,11 +172,10 @@ class FolderController extends Controller
             $folder->collaborators()->sync(
                 $visibility === FileVisibility::Collaborative
                     && $collaborationScope === CollaborationScope::Selected
-                    ? collect($validated['collaborators'] ?? [])
-                        ->mapWithKeys(fn (int $id): array => [
-                            $id => ['created_at' => now()],
-                        ])
-                        ->all()
+                    ? $this->collaboratorPermissions->pivotData(
+                        $validated['collaborators'] ?? [],
+                        $validated['collaborator_permissions'] ?? [],
+                    )
                     : [],
             );
 
@@ -178,6 +186,7 @@ class FolderController extends Controller
                 'visibility' => $visibility->value,
                 'collaboration_scope' => $collaborationScope?->value,
                 'collaborator_ids' => $validated['collaborators'] ?? [],
+                'collaborator_permissions' => $validated['collaborator_permissions'] ?? [],
             ]);
 
             return $folder;
@@ -240,6 +249,44 @@ class FolderController extends Controller
         return back()->with('status', "La carpeta «{$folder->name}» fue enviada a la papelera.");
     }
 
+    public function move(
+        MoveFolderRequest $request,
+        Folder $folder,
+    ): RedirectResponse {
+        $destinationId = $request->validated('destination_folder_id');
+        $destination = $destinationId === null
+            ? null
+            : Folder::query()->findOrFail($destinationId);
+
+        $this->authorize('move', [$folder, $destination]);
+
+        $oldParentId = $folder->parent_id;
+        $oldPath = $folder->path_cache ?: $this->paths->logicalPath($folder);
+
+        DB::transaction(function () use (
+            $request,
+            $folder,
+            $destination,
+            $oldParentId,
+            $oldPath,
+        ): void {
+            $folder->update([
+                'parent_id' => $destination?->id,
+                'path_cache' => $this->paths->pathFor($destination, $folder->name),
+            ]);
+
+            $this->paths->refreshDescendantPaths($folder);
+            $this->auditFolder($request, 'folder.moved', $folder, [
+                'old_parent_id' => $oldParentId,
+                'new_parent_id' => $folder->parent_id,
+                'old_logical_path' => $oldPath,
+                'new_logical_path' => $folder->path_cache,
+            ]);
+        });
+
+        return back()->with('status', "La carpeta «{$folder->name}» fue movida.");
+    }
+
     public function changeVisibility(
         ChangeFolderVisibilityRequest $request,
         Folder $folder,
@@ -271,11 +318,10 @@ class FolderController extends Controller
                     : [];
 
             $folder->collaborators()->sync(
-                collect($collaboratorIds)
-                    ->mapWithKeys(fn (int $id): array => [
-                        $id => ['created_at' => now()],
-                    ])
-                    ->all(),
+                $this->collaboratorPermissions->pivotData(
+                    $collaboratorIds,
+                    $request->validated('collaborator_permissions', []),
+                ),
             );
 
             $this->auditFolder($request, 'folder.visibility_changed', $folder, [
@@ -284,6 +330,10 @@ class FolderController extends Controller
                 'new_visibility' => $visibility->value,
                 'collaboration_scope' => $collaborationScope?->value,
                 'collaborator_ids' => $collaboratorIds,
+                'collaborator_permissions' => $request->validated(
+                    'collaborator_permissions',
+                    [],
+                ),
             ]);
         });
 
@@ -292,7 +342,7 @@ class FolderController extends Controller
     }
 
     private function renderSection(
-        Request $request,
+        BrowseExplorerRequest $request,
         string $section,
         string $title,
         string $description,
@@ -302,6 +352,18 @@ class FolderController extends Controller
         bool $trashed = false,
     ): View {
         $request->user()->loadMissing('permissions:id,name');
+
+        $filters = array_merge([
+            'q' => '',
+            'type' => 'all',
+            'visibility' => null,
+            'owner_id' => null,
+            'date_from' => null,
+            'date_to' => null,
+            'sort' => 'name',
+            'direction' => 'asc',
+            'per_page' => 10,
+        ], $request->validated());
 
         $folderItems = $folders
             ->with([
@@ -343,15 +405,63 @@ class FolderController extends Controller
                 $trashed,
             ));
 
-        $destinationFolders = Folder::query()
-            ->where('owner_id', $request->user()->id)
-            ->where('department_id', $request->user()->department_id)
-            ->orderBy('path_cache')
-            ->get(['id', 'name', 'path_cache', 'visibility']);
+        $accessibleItems = $folderItems->concat($fileItems)->values();
+        $ownerOptions = $accessibleItems
+            ->filter(fn (array $item): bool => $item['owner_id'] !== null && $item['owner'] !== '')
+            ->unique('owner_id')
+            ->map(fn (array $item): array => [
+                'id' => $item['owner_id'],
+                'name' => $item['owner'],
+            ])
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
 
-        $uploadVisibilityOptions = $section === 'trash'
+        $filteredItems = $this->filterAndSortItems($accessibleItems, $filters);
+        $folderCount = $filteredItems->where('type', 'folder')->count();
+        $fileCount = $filteredItems->where('type', 'file')->count();
+        $perPage = (int) $filters['per_page'];
+        $page = max(1, (int) $request->integer('page', 1));
+        $pagination = new LengthAwarePaginator(
+            $filteredItems->forPage($page, $perPage)->values(),
+            $filteredItems->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ],
+        );
+
+        $destinationFolders = Folder::query()
+            ->where(function (Builder $folders) use ($request): void {
+                $folders->where('owner_id', $request->user()->id)
+                    ->orWhere(function (Builder $collaborative) use ($request): void {
+                        $collaborative
+                            ->where('visibility', FileVisibility::Collaborative)
+                            ->where('department_id', $request->user()->department_id);
+                    });
+            })
+            ->orderBy('path_cache')
+            ->get(['id', 'parent_id', 'owner_id', 'department_id', 'name', 'path_cache', 'visibility', 'collaboration_scope'])
+            ->filter(fn (Folder $folder): bool => $folder->owner_id === $request->user()->id
+                || $request->user()->can('view', $folder))
+            ->values();
+
+        $creationVisibility = match ($section) {
+            'mine' => FileVisibility::Private,
+            'department' => FileVisibility::Collaborative,
+            'public' => FileVisibility::Public,
+            default => null,
+        };
+        $creationDestinationFolders = $creationVisibility === null
             ? collect()
-            : collect(FileVisibility::cases())
+            : $destinationFolders
+                ->filter(fn (Folder $folder): bool => $folder->visibility === $creationVisibility)
+                ->values();
+
+        $uploadVisibilityOptions = $creationVisibility === null
+            ? collect()
+            : collect([$creationVisibility])
                 ->filter(fn (FileVisibility $visibility): bool => $request->user()->can(
                     'upload',
                     [File::class, $currentFolder, $visibility],
@@ -362,9 +472,9 @@ class FolderController extends Controller
                 ])
                 ->values();
 
-        $folderVisibilityOptions = $section === 'trash'
+        $folderVisibilityOptions = $creationVisibility === null
             ? collect()
-            : collect(FileVisibility::cases())
+            : collect([$creationVisibility])
                 ->filter(fn (FileVisibility $visibility): bool => $request->user()->can(
                     'create',
                     [Folder::class, $currentFolder, $visibility],
@@ -409,11 +519,48 @@ class FolderController extends Controller
             }
         }
 
-        $defaultUploadVisibility = match ($section) {
+        $defaultSectionVisibility = match ($section) {
             'department' => FileVisibility::Collaborative->value,
             'public' => FileVisibility::Public->value,
             default => FileVisibility::Private->value,
         };
+        $inheritedVisibility = $currentFolder?->visibility->value;
+        $defaultUploadVisibility = $inheritedVisibility !== null
+            && $uploadVisibilityOptions->contains('value', $inheritedVisibility)
+                ? $inheritedVisibility
+                : ($uploadVisibilityOptions->contains('value', $defaultSectionVisibility)
+                    ? $defaultSectionVisibility
+                    : $uploadVisibilityOptions->first()['value'] ?? $defaultSectionVisibility);
+        $defaultFolderVisibility = $folderVisibilityOptions->contains(
+            'value',
+            $defaultSectionVisibility,
+        )
+            ? $defaultSectionVisibility
+            : $folderVisibilityOptions->first()['value'] ?? $defaultSectionVisibility;
+        $defaultUploadCollaborationScope = $currentFolder?->visibility
+            === FileVisibility::Collaborative
+                ? $currentFolder->collaboration_scope?->value
+                    ?? CollaborationScope::Department->value
+                : CollaborationScope::Department->value;
+        $defaultUploadCollaborators = [];
+        $defaultUploadCollaboratorPermissions = [];
+
+        if ($currentFolder?->visibility === FileVisibility::Collaborative
+            && $currentFolder->collaboration_scope === CollaborationScope::Selected) {
+            $currentFolder->loadMissing('collaborators:id');
+            $defaultUploadCollaborators = $currentFolder->collaborators
+                ->pluck('id')
+                ->all();
+            $defaultUploadCollaboratorPermissions = $currentFolder->collaborators
+                ->mapWithKeys(fn (User $collaborator): array => [
+                    $collaborator->id => collect(CollaboratorPermission::cases())
+                        ->filter(fn (CollaboratorPermission $permission): bool => (bool) $collaborator->pivot->{$permission->pivotColumn()})
+                        ->map(fn (CollaboratorPermission $permission): string => $permission->value)
+                        ->values()
+                        ->all(),
+                ])
+                ->all();
+        }
 
         return view('folders.index', [
             'user' => $this->userData($request->user()),
@@ -421,9 +568,14 @@ class FolderController extends Controller
             'section' => $section,
             'title' => $title,
             'description' => $description,
-            'items' => $folderItems->concat($fileItems),
-            'folderCount' => $folderItems->count(),
-            'fileCount' => $fileItems->count(),
+            'items' => $pagination->getCollection(),
+            'pagination' => $pagination,
+            'folderCount' => $folderCount,
+            'fileCount' => $fileCount,
+            'filteredItemCount' => $filteredItems->count(),
+            'availableItemCount' => $accessibleItems->count(),
+            'filters' => $filters,
+            'ownerOptions' => $ownerOptions,
             'currentFolder' => $currentFolder,
             'logicalPath' => $currentFolder === null
                 ? '/'
@@ -437,11 +589,78 @@ class FolderController extends Controller
             'canUploadFile' => $uploadVisibilityOptions->isNotEmpty(),
             'uploadVisibilityOptions' => $uploadVisibilityOptions,
             'defaultUploadVisibility' => $defaultUploadVisibility,
+            'defaultFolderVisibility' => $defaultFolderVisibility,
+            'defaultUploadCollaborationScope' => $defaultUploadCollaborationScope,
+            'defaultUploadCollaborators' => $defaultUploadCollaborators,
+            'defaultUploadCollaboratorPermissions' => $defaultUploadCollaboratorPermissions,
             'destinationFolders' => $destinationFolders,
+            'creationDestinationFolders' => $creationDestinationFolders,
             'departmentUsers' => $departmentUsers,
             'departmentUsersError' => $departmentUsersError,
             'trashRetentionDays' => max(1, (int) config('nube.trash_retention_days', 30)),
+            'autoOpenModal' => $request->validated('open'),
         ]);
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $items
+     * @param  array<string, mixed>  $filters
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function filterAndSortItems(Collection $items, array $filters): Collection
+    {
+        $search = mb_strtolower((string) $filters['q']);
+        $from = $filters['date_from']
+            ? Carbon::createFromFormat('Y-m-d', (string) $filters['date_from'])->startOfDay()->timestamp
+            : null;
+        $to = $filters['date_to']
+            ? Carbon::createFromFormat('Y-m-d', (string) $filters['date_to'])->endOfDay()->timestamp
+            : null;
+
+        $filtered = $items->filter(function (array $item) use ($filters, $search, $from, $to): bool {
+            if ($search !== '' && ! str_contains(mb_strtolower($item['name']), $search)) {
+                return false;
+            }
+
+            if ($filters['type'] !== 'all' && $item['type'] !== $filters['type']) {
+                return false;
+            }
+
+            if ($filters['visibility'] && $item['visibility'] !== $filters['visibility']) {
+                return false;
+            }
+
+            if ($filters['owner_id'] && $item['owner_id'] !== (int) $filters['owner_id']) {
+                return false;
+            }
+
+            if ($from !== null && $item['sort_date'] < $from) {
+                return false;
+            }
+
+            return $to === null || $item['sort_date'] <= $to;
+        });
+
+        $sortKey = match ($filters['sort']) {
+            'date' => 'sort_date',
+            'size' => 'size_bytes',
+            default => 'name',
+        };
+        $descending = $filters['direction'] === 'desc';
+
+        return $filtered
+            ->sort(function (array $left, array $right) use ($sortKey, $descending): int {
+                $comparison = is_string($left[$sortKey])
+                    ? strnatcasecmp($left[$sortKey], $right[$sortKey])
+                    : ($left[$sortKey] <=> $right[$sortKey]);
+
+                if ($comparison === 0) {
+                    $comparison = strnatcasecmp($left['name'], $right['name']);
+                }
+
+                return $descending ? -$comparison : $comparison;
+            })
+            ->values();
     }
 
     private function folderQuery(?Folder $parent): Builder
@@ -520,8 +739,11 @@ class FolderController extends Controller
             'type' => 'folder',
             'name' => $folder->name,
             'icon' => 'folder',
-            'owner' => $folder->owner?->name,
+            'owner_id' => $folder->owner_id,
+            'owner' => trim("{$folder->owner?->name} {$folder->owner?->last_name}"),
             'date' => ($trashed ? $folder->deleted_at : $folder->updated_at)?->diffForHumans(),
+            'sort_date' => ($trashed ? $folder->deleted_at : $folder->updated_at)?->timestamp ?? 0,
+            'size_bytes' => 0,
             'size' => null,
             'visibility' => $folder->visibility->value,
             'visibility_label' => $folder->visibility->label(),
@@ -531,10 +753,11 @@ class FolderController extends Controller
                 $folder->collaborators->count(),
             ),
             'url' => $trashed ? null : $this->sectionRoute($section, $folder),
+            'parent_id' => $folder->parent_id,
             'can_rename' => ! $trashed && $request->user()->can('update', $folder),
             'can_delete' => ! $trashed && $request->user()->can('delete', $folder),
             'can_download' => false,
-            'can_move' => false,
+            'can_move' => ! $trashed && $request->user()->can('move', [$folder, null]),
             'can_change_visibility' => ! $trashed && $visibilityOptions !== [],
             'visibility_options' => $visibilityOptions,
             'can_restore' => false,
@@ -542,9 +765,11 @@ class FolderController extends Controller
             'purge_label' => null,
             'purge_at' => null,
             'update_url' => route('folders.update', $folder),
+            'move_url' => route('folders.move', $folder),
             'delete_url' => route('folders.destroy', $folder),
             'visibility_url' => route('folders.visibility', $folder),
             'rename_modal_id' => "rename-folder-{$folder->id}",
+            'move_modal_id' => "move-folder-{$folder->id}",
             'delete_modal_id' => "delete-folder-{$folder->id}",
             'visibility_modal_id' => "visibility-folder-{$folder->id}",
         ];
@@ -582,8 +807,11 @@ class FolderController extends Controller
             'type' => 'file',
             'name' => $file->display_name,
             'icon' => $this->fileIcon($file->extension),
-            'owner' => $file->owner?->name,
+            'owner_id' => $file->owner_id,
+            'owner' => trim("{$file->owner?->name} {$file->owner?->last_name}"),
             'date' => ($trashed ? $file->deleted_at : $file->uploaded_at)?->diffForHumans(),
+            'sort_date' => ($trashed ? $file->deleted_at : $file->uploaded_at)?->timestamp ?? 0,
+            'size_bytes' => $file->size_bytes,
             'size' => $this->formatBytes($file->size_bytes),
             'visibility' => $file->visibility->value,
             'visibility_label' => $file->visibility->label(),
@@ -682,7 +910,7 @@ class FolderController extends Controller
             'name' => trim("{$user->name} {$user->last_name}"),
             'first_name' => $user->name,
             'department' => $user->department?->name ?? 'Sin departamento',
-            'avatar' => asset('assets/figma/avatar.png'),
+            'avatar' => $user->avatarUrl(),
         ];
     }
 

@@ -5,4 +5,5 @@
 !papelera/.gitignore
 !temporales/
 !temporales/.gitignore
+!.htaccess
 !.gitignore

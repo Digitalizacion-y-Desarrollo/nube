@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\CollaborationScope;
 use App\Enums\FileVisibility;
+use App\Models\Concerns\HasCollaboratorPermissions;
+use App\Models\Concerns\RecordsDeletedBy;
 use Database\Factories\FolderFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,7 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Folder extends Model
 {
     /** @use HasFactory<FolderFactory> */
-    use HasFactory, HasUuids, SoftDeletes;
+    use HasCollaboratorPermissions, HasFactory, HasUuids, RecordsDeletedBy, SoftDeletes;
 
     protected $fillable = [
         'parent_id',
@@ -64,6 +66,13 @@ class Folder extends Model
     public function collaborators(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'folder_collaborators')
-            ->withPivot('created_at');
+            ->withPivot([
+                'can_view',
+                'can_download',
+                'can_rename',
+                'can_move',
+                'can_delete',
+                'created_at',
+            ]);
     }
 }
