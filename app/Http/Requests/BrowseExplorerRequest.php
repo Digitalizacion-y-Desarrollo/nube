@@ -27,7 +27,7 @@ class BrowseExplorerRequest extends FormRequest
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'sort' => ['nullable', Rule::in(['name', 'date', 'size'])],
             'direction' => ['nullable', Rule::in(['asc', 'desc'])],
-            'per_page' => ['nullable', Rule::in([10, 25, 50])],
+            'per_page' => ['nullable', Rule::in([10, 20, 50])],
             'open' => ['nullable', Rule::in(['upload', 'folder'])],
         ];
     }

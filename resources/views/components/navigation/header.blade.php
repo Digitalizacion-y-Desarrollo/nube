@@ -31,6 +31,40 @@
             <kbd class="hidden rounded-md border border-line bg-soft px-2 py-1 text-[10px] font-semibold text-muted lg:inline-flex">⌘ K</kbd>
         </button>
         <x-ui.theme-toggle />
+        <div class="relative" data-help-menu>
+            <button
+                type="button"
+                id="help"
+                data-help-menu-trigger
+                class="flex size-10 items-center justify-center rounded-full border border-line bg-surface text-muted transition hover:border-gold hover:bg-warm hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold dark:hover:text-white"
+                aria-label="Ayuda"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-controls="help-menu-panel"
+                title="Ayuda"
+            >
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9.25" stroke="currentColor" stroke-width="1.8"/>
+                    <path d="M9.4 9.5a2.75 2.75 0 0 1 5.35.9c0 1.83-2.75 2.75-2.75 2.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="12" cy="16.75" r="0.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+            </button>
+
+            <div
+                id="help-menu-panel"
+                data-help-menu-panel
+                role="menu"
+                aria-labelledby="help"
+                hidden
+                class="absolute right-0 top-full z-40 mt-2 w-72 rounded-xl border border-line bg-surface p-2 shadow-xl"
+            >
+                <p class="px-2.5 pb-2 pt-1.5 text-[11px] font-bold uppercase tracking-wide text-muted">Recorridos guiados</p>
+                <div data-help-menu-list class="space-y-0.5"></div>
+                <p data-help-menu-empty hidden class="px-2.5 py-3 text-xs leading-5 text-muted">
+                    Todavía no hay un recorrido guiado disponible para esta página.
+                </p>
+            </div>
+        </div>
         <a href="{{ route('profile.edit') }}" class="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" title="Editar foto de perfil">
             <img src="{{ $user['avatar'] ?? asset('assets/figma/avatar-small.png') }}" alt="Foto de perfil de {{ $user['name'] ?? 'usuario' }}" width="36" height="36" class="size-9 rounded-full object-cover ring-1 ring-line">
         </a>

@@ -1,4 +1,4 @@
-<x-layouts.app :title="$title" :user="$user" :permissions="$permissions">
+<x-layouts.app :title="$title" :user="$user" :permissions="$permissions" help-page="explorer">
     <x-slot:uploadModal>
         @if ($canUploadFile)
             <x-ui.modal
@@ -513,7 +513,7 @@
     @endif
 
     <section class="mb-6">
-        <div class="overflow-x-auto pb-1">
+        <div class="overflow-x-auto pb-1" data-tour="breadcrumbs">
             <x-ui.breadcrumbs :items="$breadcrumbs" />
         </div>
 
@@ -540,6 +540,7 @@
             @if ($canUploadFile || $canCreateFolder)
                 <div
                     @if ($currentFolder) data-current-folder-actions @endif
+                    data-tour="explorer-actions"
                     class="w-full shrink-0 sm:w-auto"
                     @if ($currentFolder) aria-label="Agregar contenido en {{ $currentFolder->name }}" @endif
                 >
@@ -573,7 +574,7 @@
         </x-ui.alert>
     @endif
 
-    <section aria-label="Resumen de la ubicación" class="mb-5 grid grid-cols-2 gap-3 sm:max-w-md">
+    <section aria-label="Resumen de la ubicación" data-tour="explorer-summary" class="mb-5 grid grid-cols-2 gap-3 sm:max-w-md">
         <article class="rounded-xl border border-line bg-surface p-4">
             <p class="text-xs font-semibold uppercase tracking-wide text-muted">Carpetas</p>
             <p class="mt-1 text-2xl font-bold text-brand dark:text-white">{{ $folderCount }}</p>
@@ -584,22 +585,32 @@
         </article>
     </section>
 
-    <section aria-labelledby="explorer-filters-title" class="mb-5 rounded-xl border border-line bg-surface p-4 sm:p-5">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div>
-                <h3 id="explorer-filters-title" class="text-sm font-bold text-ink">Buscar y filtrar</h3>
-                <p class="mt-1 text-xs text-muted" aria-live="polite">
-                    {{ $filteredItemCount }} de {{ $availableItemCount }} elementos
-                </p>
-            </div>
-            @if (collect($filters)->except(['sort', 'direction', 'per_page'])->filter()->isNotEmpty())
-                <a href="{{ url()->current() }}" class="rounded-lg px-3 py-2 text-xs font-semibold text-brand hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand dark:text-white">
-                    Limpiar filtros
-                </a>
-            @endif
-        </div>
+    <section aria-labelledby="explorer-filters-title" data-tour="explorer-filters" class="mb-5 overflow-hidden rounded-xl border border-line bg-surface">
+        <details data-collapsible-filters>
+            <summary class="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 p-4 [&::-webkit-details-marker]:hidden sm:p-5">
+                <span class="flex items-center gap-2.5">
+                    <x-ui.icon
+                        name="chevron-right"
+                        :size="16"
+                        alt=""
+                        data-collapsible-chevron
+                        class="shrink-0 transition-transform duration-200"
+                    />
+                    <span>
+                        <h3 id="explorer-filters-title" class="text-sm font-bold text-ink">Buscar y filtrar</h3>
+                        <p class="mt-1 text-xs text-muted" aria-live="polite">
+                            {{ $filteredItemCount }} de {{ $availableItemCount }} elementos
+                        </p>
+                    </span>
+                </span>
+                @if (collect($filters)->except(['sort', 'direction', 'per_page'])->filter()->isNotEmpty())
+                    <a href="{{ url()->current() }}" class="rounded-lg px-3 py-2 text-xs font-semibold text-brand hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand dark:text-white">
+                        Limpiar filtros
+                    </a>
+                @endif
+            </summary>
 
-        <form method="GET" action="{{ url()->current() }}" class="grid gap-3 md:grid-cols-2 xl:grid-cols-12">
+        <form method="GET" action="{{ url()->current() }}" class="grid gap-3 border-t border-line p-4 pt-4 md:grid-cols-2 xl:grid-cols-12 sm:p-5 sm:pt-4">
             <label class="xl:col-span-4">
                 <span class="mb-1.5 block text-xs font-semibold text-muted">Buscar</span>
                 <span class="relative block">
@@ -678,7 +689,7 @@
             <label class="xl:col-span-2">
                 <span class="mb-1.5 block text-xs font-semibold text-muted">Por página</span>
                 <select name="per_page" class="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
-                    @foreach ([10, 25, 50] as $perPage)
+                    @foreach ([10, 20, 50] as $perPage)
                         <option value="{{ $perPage }}" @selected((int) $filters['per_page'] === $perPage)>{{ $perPage }}</option>
                     @endforeach
                 </select>
@@ -690,9 +701,10 @@
                 </x-ui.button>
             </div>
         </form>
+        </details>
     </section>
 
-    <section aria-labelledby="explorer-items-title" class="overflow-hidden rounded-xl border border-line bg-surface">
+    <section aria-labelledby="explorer-items-title" data-tour="explorer-items" class="overflow-hidden rounded-xl border border-line bg-surface">
         <div class="flex items-center justify-between border-b border-line px-4 py-4 sm:px-5">
             <h3 id="explorer-items-title" class="text-sm font-bold">
                 {{ $section === 'trash' ? 'Elementos eliminados' : 'Contenido' }}

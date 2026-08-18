@@ -1,4 +1,4 @@
-<x-layouts.app title="Inicio" :user="$user" :permissions="$permissions">
+<x-layouts.app title="Inicio" :user="$user" :permissions="$permissions" help-page="dashboard">
     @php
         $isAdministrator = in_array('nube_administracion_administrar', $permissions, true);
         $canUploadPrivate = $isAdministrator
@@ -19,7 +19,7 @@
         <p class="mt-1 hidden text-[13px] text-muted lg:block">Aquí tienes un resumen de tu actividad y accesos rápidos.</p>
     </section>
 
-    <section aria-labelledby="quick-actions-title" class="mb-5 lg:mb-6">
+    <section aria-labelledby="quick-actions-title" data-tour="quick-actions" class="mb-5 lg:mb-6">
         <h3 id="quick-actions-title" class="mb-2.5 text-sm font-bold uppercase text-ink lg:sr-only">Acciones rápidas</h3>
         <div class="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap lg:gap-3">
             @if ($canUploadPrivate)
@@ -62,7 +62,7 @@
         </div>
     </section>
 
-    <section aria-label="Indicadores" class="-mx-5 mb-5 overflow-x-auto px-5 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:mb-6 lg:overflow-visible lg:px-0">
+    <section aria-label="Indicadores" data-tour="indicators" class="-mx-5 mb-5 overflow-x-auto px-5 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:mb-6 lg:overflow-visible lg:px-0">
         <div class="flex min-w-max gap-2 lg:grid lg:min-w-0 lg:grid-cols-4 lg:gap-4">
             @foreach ($indicators as $indicator)
                 <article class="w-[115px] rounded-xl border border-line bg-surface p-3 lg:w-auto lg:p-5">
@@ -79,7 +79,7 @@
         </div>
     </section>
 
-    <section aria-labelledby="recent-files-title" class="mb-5 lg:mb-6">
+    <section aria-labelledby="recent-files-title" data-tour="recent-files" class="mb-5 lg:mb-6">
         <div class="mb-3 flex items-center justify-between lg:mb-0 lg:rounded-t-xl lg:border lg:border-line lg:bg-surface lg:p-5">
             <h3 id="recent-files-title" class="text-sm font-bold uppercase text-ink lg:text-[15px] lg:normal-case">Archivos Recientes</h3>
             @if (in_array('nube_mis_archivos_ver', $permissions, true) || in_array('nube_administracion_administrar', $permissions, true))

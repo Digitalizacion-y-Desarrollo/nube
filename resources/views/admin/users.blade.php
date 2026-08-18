@@ -30,7 +30,8 @@
         </article>
     </section>
 
-    <form action="{{ route('admin.users') }}" method="GET" class="mb-5 rounded-xl border border-line bg-surface p-4" aria-label="Filtros de usuarios">
+    <x-ui.collapsible-filters label="Buscar y filtrar">
+    <form action="{{ route('admin.users') }}" method="GET" aria-label="Filtros de usuarios">
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <label class="block xl:col-span-2">
                 <span class="mb-1.5 block text-xs font-semibold text-muted">Nombre, correo o identificador</span>
@@ -78,6 +79,7 @@
             </div>
         </div>
     </form>
+    </x-ui.collapsible-filters>
 
     <x-ui.alert tone="info" class="mb-5">
         Sección de consulta: la identidad, el departamento, los roles y los permisos se administran únicamente en el sistema central de Accesos.

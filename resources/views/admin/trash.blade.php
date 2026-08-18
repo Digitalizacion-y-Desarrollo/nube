@@ -44,7 +44,8 @@
         </article>
     </section>
 
-    <form action="{{ route('admin.trash') }}" method="GET" class="mb-5 rounded-xl border border-line bg-surface p-4" aria-label="Filtros de la papelera global">
+    <x-ui.collapsible-filters label="Buscar y filtrar">
+    <form action="{{ route('admin.trash') }}" method="GET" aria-label="Filtros de la papelera global">
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <label class="block xl:col-span-2">
                 <span class="mb-1.5 block text-xs font-semibold text-muted">Nombre</span>
@@ -95,6 +96,7 @@
             </div>
         </div>
     </form>
+    </x-ui.collapsible-filters>
 
     @unless ($canOperate)
         <x-ui.alert tone="info" class="mb-5">
@@ -287,7 +289,14 @@
                     @csrf
                     @method('DELETE')
                     <label class="block">
-                        <span class="mb-1.5 block text-xs font-semibold text-muted">Escribe <span class="font-bold text-ink">{{ $file->display_name }}</span> para confirmar</span>
+                        <span class="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted">
+                            Escribe <span class="font-bold text-ink">{{ $file->display_name }}</span> para confirmar
+                            <x-ui.help-tip label="Por qué se pide escribir el nombre">
+                                Esta confirmación reforzada evita eliminar el elemento
+                                equivocado por error. No hay forma de deshacer esta
+                                acción una vez enviada.
+                            </x-ui.help-tip>
+                        </span>
                         <input type="text" name="confirmation" required autocomplete="off" class="h-11 w-full rounded-lg border border-line bg-surface px-3.5 text-sm outline-none focus:border-red-500 focus:ring-3 focus:ring-red-500/10">
                     </label>
                     <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -307,7 +316,14 @@
                     @csrf
                     @method('DELETE')
                     <label class="block">
-                        <span class="mb-1.5 block text-xs font-semibold text-muted">Escribe <span class="font-bold text-ink">{{ $folder->name }}</span> para confirmar</span>
+                        <span class="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted">
+                            Escribe <span class="font-bold text-ink">{{ $folder->name }}</span> para confirmar
+                            <x-ui.help-tip label="Por qué se pide escribir el nombre">
+                                Esta confirmación reforzada evita eliminar el elemento
+                                equivocado por error. No hay forma de deshacer esta
+                                acción una vez enviada.
+                            </x-ui.help-tip>
+                        </span>
                         <input type="text" name="confirmation" required autocomplete="off" class="h-11 w-full rounded-lg border border-line bg-surface px-3.5 text-sm outline-none focus:border-red-500 focus:ring-3 focus:ring-red-500/10">
                     </label>
                     <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
