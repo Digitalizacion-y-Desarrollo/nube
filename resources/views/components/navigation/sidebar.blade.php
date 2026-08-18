@@ -32,7 +32,7 @@
 
         <div class="mb-5 h-px bg-line"></div>
 
-        <nav aria-label="Navegación principal" class="space-y-1">
+        <nav aria-label="Navegación principal" data-tour="sidebar-nav" class="space-y-1">
             @foreach ($items as $item)
                 <a
                     href="{{ route($item['route']) }}"

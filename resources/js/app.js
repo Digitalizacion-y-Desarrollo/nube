@@ -1,6 +1,262 @@
 import './bootstrap';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
+import { driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
+
+// Recorridos guiados por página. La clave coincide con el atributo
+// `data-help-page` que cada vista pasa a <x-layouts.app help-page="...">.
+// Cada paso se filtra en tiempo de ejecución contra el DOM real: los
+// elementos condicionados a permisos (por ejemplo, subir archivos) sólo
+// aparecen en el recorrido si de verdad están visibles para ese usuario.
+const helpTours = {
+    dashboard: [
+        {
+            id: 'dashboard-overview',
+            label: 'Recorrido de esta página',
+            steps: [
+                {
+                    element: '[data-tour="sidebar-nav"]',
+                    popover: {
+                        title: 'Navegación principal',
+                        description: 'Accede a Mis archivos, tu departamento, contenido público y la papelera desde aquí.',
+                    },
+                },
+                {
+                    element: '[data-global-search-open]',
+                    popover: {
+                        title: 'Búsqueda global',
+                        description: 'Busca cualquier archivo o carpeta a la que tengas acceso. Atajo: Ctrl (o ⌘) + K.',
+                    },
+                },
+                {
+                    element: '[data-tour="quick-actions"]',
+                    popover: {
+                        title: 'Acciones rápidas',
+                        description: 'Sube un archivo o crea una carpeta sin salir de esta página.',
+                    },
+                },
+                {
+                    element: '[data-tour="indicators"]',
+                    popover: {
+                        title: 'Indicadores',
+                        description: 'Un vistazo rápido a tus archivos, carpetas y almacenamiento.',
+                    },
+                },
+                {
+                    element: '[data-tour="recent-files"]',
+                    popover: {
+                        title: 'Archivos recientes',
+                        description: 'Retoma rápidamente lo último en lo que trabajaste.',
+                    },
+                },
+                {
+                    element: '#help',
+                    popover: {
+                        title: 'Ayuda',
+                        description: 'Puedes volver a abrir este recorrido cuando quieras desde este botón.',
+                    },
+                },
+            ],
+        },
+    ],
+    explorer: [
+        {
+            id: 'explorer-overview',
+            label: 'Recorrido de esta sección',
+            steps: [
+                {
+                    element: '[data-tour="breadcrumbs"]',
+                    popover: {
+                        title: 'Tu ubicación actual',
+                        description: 'Muestra dónde estás y te permite volver a cualquier carpeta superior.',
+                    },
+                },
+                {
+                    element: '[data-tour="explorer-actions"]',
+                    popover: {
+                        title: 'Subir y crear',
+                        description: 'Agrega archivos o carpetas nuevas en la ubicación donde te encuentras.',
+                    },
+                },
+                {
+                    element: '[data-tour="explorer-summary"]',
+                    popover: {
+                        title: 'Resumen',
+                        description: 'Cuántas carpetas y archivos hay en esta ubicación.',
+                    },
+                },
+                {
+                    element: '[data-tour="explorer-filters"]',
+                    popover: {
+                        title: 'Buscar y filtrar',
+                        description: 'Filtra por nombre, tipo, clasificación, propietario o fecha, y ordena los resultados.',
+                    },
+                },
+                {
+                    element: '[data-tour="explorer-items"]',
+                    popover: {
+                        title: 'Contenido',
+                        description: 'Cada elemento tiene botones para descargar, renombrar, mover, reclasificar o eliminar, según tus permisos.',
+                    },
+                },
+            ],
+        },
+    ],
+};
+
+const isVisible = (element) => !!element && element.offsetParent !== null;
+
+const buildHelpMenu = () => {
+    const menu = document.querySelector('[data-help-menu]');
+    const trigger = menu?.querySelector('[data-help-menu-trigger]');
+    const panel = menu?.querySelector('[data-help-menu-panel]');
+    const list = panel?.querySelector('[data-help-menu-list]');
+    const emptyState = panel?.querySelector('[data-help-menu-empty]');
+
+    if (!menu || !trigger || !panel || !list || !emptyState) {
+        return;
+    }
+
+    const pageKey = document.body.dataset.helpPage;
+    const availableTours = (helpTours[pageKey] || []).filter(
+        (tour) => tour.steps.some((step) => isVisible(document.querySelector(step.element))),
+    );
+
+    const closeMenu = () => {
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+    };
+
+    const openMenu = () => {
+        panel.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        list.querySelector('button')?.focus();
+    };
+
+    const startTour = (tour) => {
+        const steps = tour.steps.filter((step) => isVisible(document.querySelector(step.element)));
+
+        if (steps.length === 0) {
+            return;
+        }
+
+        closeMenu();
+        driver({
+            showProgress: true,
+            nextBtnText: 'Siguiente',
+            prevBtnText: 'Anterior',
+            doneBtnText: 'Listo',
+            steps,
+        }).drive();
+    };
+
+    if (availableTours.length === 0) {
+        emptyState.hidden = false;
+    } else {
+        availableTours.forEach((tour) => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.setAttribute('role', 'menuitem');
+            item.className = 'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left text-sm font-semibold text-ink hover:bg-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand';
+            item.textContent = tour.label;
+            item.addEventListener('click', () => startTour(tour));
+            list.append(item);
+        });
+    }
+
+    trigger.addEventListener('click', () => {
+        if (panel.hidden) {
+            openMenu();
+        } else {
+            closeMenu();
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!panel.hidden && !menu.contains(event.target)) {
+            closeMenu();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !panel.hidden) {
+            closeMenu();
+            trigger.focus();
+        }
+    });
+};
+
+buildHelpMenu();
+
+// Paneles de filtros colapsables (x-ui.collapsible-filters): abiertos por
+// defecto en escritorio para no cambiar el comportamiento actual ahí; en
+// móvil quedan colapsados hasta que el usuario los abre, para no interponer
+// una fila larga de campos antes del contenido. 1024px coincide con el punto
+// de quiebre `lg:` que ya usa el resto de la interfaz.
+const isDesktopViewport = window.matchMedia('(min-width: 1024px)');
+
+document.querySelectorAll('[data-collapsible-filters]').forEach((details) => {
+    const chevron = details.querySelector('[data-collapsible-chevron]');
+    const syncChevron = () => chevron?.classList.toggle('rotate-90', details.open);
+
+    if (isDesktopViewport.matches) {
+        details.open = true;
+    }
+
+    syncChevron();
+    details.addEventListener('toggle', syncChevron);
+});
+
+// Ayuda puntual (x-ui.help-tip): a diferencia del menú de #help, puede haber
+// muchas instancias por página (por ejemplo, un modal de purga por elemento
+// de la papelera), así que se maneja por delegación en vez de un listener por
+// instancia.
+const closeAllHelpTips = (except = null) => {
+    document.querySelectorAll('[data-help-tip]').forEach((tip) => {
+        if (tip === except) {
+            return;
+        }
+
+        const panel = tip.querySelector('[data-help-tip-panel]');
+        const trigger = tip.querySelector('[data-help-tip-trigger]');
+
+        if (panel && !panel.hidden) {
+            panel.hidden = true;
+            trigger?.setAttribute('aria-expanded', 'false');
+        }
+    });
+};
+
+document.addEventListener('click', (event) => {
+    const trigger = event.target.closest('[data-help-tip-trigger]');
+
+    if (!trigger) {
+        if (!event.target.closest('[data-help-tip-panel]')) {
+            closeAllHelpTips();
+        }
+
+        return;
+    }
+
+    const tip = trigger.closest('[data-help-tip]');
+    const panel = tip?.querySelector('[data-help-tip-panel]');
+
+    if (!panel) {
+        return;
+    }
+
+    const willOpen = panel.hidden;
+    closeAllHelpTips(tip);
+    panel.hidden = !willOpen;
+    trigger.setAttribute('aria-expanded', String(willOpen));
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        closeAllHelpTips();
+    }
+});
 
 const themePreference = {
     get() {

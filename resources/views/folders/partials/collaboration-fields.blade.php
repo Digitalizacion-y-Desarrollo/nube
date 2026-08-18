@@ -23,7 +23,16 @@
 
 <div data-collaboration-options class="hidden space-y-4 rounded-xl border border-line bg-surface-alt p-4">
     <label class="block">
-        <span class="mb-1.5 block text-[13px] font-semibold text-muted">Compartir con</span>
+        <span class="mb-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-muted">
+            Compartir con
+            <x-ui.help-tip label="Qué significa cada alcance de colaboración">
+                <strong class="block text-ink">{{ $departmentAudienceLabel }}</strong>
+                Todos los que pertenezcan a tu departamento pueden ver y descargar.
+                <strong class="mt-2 block text-ink">Personas específicas</strong>
+                Sólo quienes selecciones abajo, cada uno con sus propios permisos
+                internos (ver, descargar, renombrar, mover, eliminar).
+            </x-ui.help-tip>
+        </span>
         <select name="collaboration_scope" data-collaboration-scope class="h-[46px] w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
             <option value="department" @selected($selectedCollaborationScope === 'department')>
                 {{ $departmentAudienceLabel }}

@@ -7,7 +7,8 @@
         <span class="text-sm font-semibold text-muted">{{ $departments->total() }} {{ $departments->total() === 1 ? 'departamento' : 'departamentos' }}</span>
     </div>
 
-    <form action="{{ route('admin.departments') }}" method="GET" class="mb-5 rounded-xl border border-line bg-surface p-4" aria-label="Filtros de departamentos">
+    <x-ui.collapsible-filters label="Buscar y filtrar">
+    <form action="{{ route('admin.departments') }}" method="GET" aria-label="Filtros de departamentos">
         <div class="grid gap-3 sm:grid-cols-3">
             <label class="block sm:col-span-2">
                 <span class="mb-1.5 block text-xs font-semibold text-muted">Nombre o abreviatura</span>
@@ -27,6 +28,7 @@
             <button type="submit" class="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-brand/90">Aplicar filtros</button>
         </div>
     </form>
+    </x-ui.collapsible-filters>
 
     <section class="overflow-hidden rounded-xl border border-line bg-surface">
         <div class="overflow-x-auto">

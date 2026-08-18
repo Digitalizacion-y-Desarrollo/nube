@@ -18,6 +18,20 @@
             || $isAdministrator
             || in_array($item['permission'], $permissions, true),
     );
+
+    // El panel administrativo no vive en el menú lateral móvil por permiso
+    // funcional, sino por el rol `superuser` (ver AGENT.md); antes sólo se
+    // podía llegar ahí abriendo el menú hamburguesa, a diferencia del
+    // escritorio, donde es un enlace siempre visible en la barra lateral.
+    if (auth()->user()?->hasRole('superuser')) {
+        $items[] = [
+            'label' => 'Admin',
+            'icon' => 'shield',
+            'route' => 'admin.dashboard',
+            'pattern' => 'admin.*',
+            'permission' => null,
+        ];
+    }
 @endphp
 
 <nav aria-label="Navegación inferior" class="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur-lg lg:hidden">

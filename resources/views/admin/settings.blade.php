@@ -182,7 +182,15 @@
                     <dd class="mt-1 text-sm font-medium">{{ $accessApi['session_check_interval'] }} segundos</dd>
                 </div>
                 <div class="sm:col-span-2">
-                    <dt class="text-xs font-semibold text-muted">Última validación de tu sesión</dt>
+                    <dt class="flex items-center gap-1.5 text-xs font-semibold text-muted">
+                        Última validación de tu sesión
+                        <x-ui.help-tip label="Diferencia entre esta fecha y la comprobación en vivo">
+                            Es evidencia pasiva: si ves esta página, el API respondió
+                            correctamente en esa validación periódica. No genera
+                            tráfico nuevo. Para saber el estado justo ahora, usa
+                            «Comprobar conexión ahora».
+                        </x-ui.help-tip>
+                    </dt>
                     <dd class="mt-1 text-sm font-medium">
                         {{ $accessApi['session_validated_at']?->format('d/m/Y H:i:s') ?? 'Sin registro' }}
                         <span class="block text-xs text-muted">Tu sesión sigue activa, así que el API respondió correctamente en esa validación.</span>

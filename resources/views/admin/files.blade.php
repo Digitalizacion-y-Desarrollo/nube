@@ -15,7 +15,8 @@
         <span class="text-sm font-semibold text-muted">{{ $files->total() }} {{ $files->total() === 1 ? 'resultado' : 'resultados' }}</span>
     </div>
 
-    <form action="{{ route('admin.files') }}" method="GET" class="mb-5 rounded-xl border border-line bg-surface p-4" aria-label="Filtros del explorador global">
+    <x-ui.collapsible-filters label="Buscar y filtrar">
+    <form action="{{ route('admin.files') }}" method="GET" aria-label="Filtros del explorador global">
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <label class="block xl:col-span-2">
                 <span class="mb-1.5 block text-xs font-semibold text-muted">Nombre</span>
@@ -100,6 +101,7 @@
             <button type="submit" class="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-brand/90 focus:outline-none focus:ring-3 focus:ring-brand/20">Aplicar filtros</button>
         </div>
     </form>
+    </x-ui.collapsible-filters>
 
     @unless ($canOperate)
         <x-ui.alert tone="warning" class="mb-5">

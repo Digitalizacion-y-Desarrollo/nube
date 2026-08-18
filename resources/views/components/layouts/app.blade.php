@@ -2,6 +2,7 @@
     'title' => 'Inicio',
     'user' => [],
     'permissions' => [],
+    'helpPage' => null,
 ])
 
 <!DOCTYPE html>
@@ -17,7 +18,7 @@
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="min-h-screen bg-canvas font-sans text-ink antialiased">
+    <body class="min-h-screen bg-canvas font-sans text-ink antialiased" @if ($helpPage) data-help-page="{{ $helpPage }}" @endif>
         <div class="min-h-screen lg:flex">
             <x-navigation.sidebar :user="$user" :permissions="$permissions" />
 

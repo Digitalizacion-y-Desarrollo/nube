@@ -672,6 +672,135 @@ y el departamento, y permitir cambiar la foto.
   anterior, retorno a las iniciales, rechazo de archivos inválidos, aislamiento
   entre usuarios, exigencia de sesión y supervivencia a la sincronización.
 
+### Recorridos guiados con driver.js (ampliación fuera de épicos)
+
+Botón de ayuda (`#help`) en el encabezado de la nube personal, que abre un menú
+con los recorridos guiados disponibles para la página actual.
+
+- El menú es **contextual por página**, no una lista global fija: cada vista
+  declara su clave con `<x-layouts.app help-page="...">`, que se refleja como
+  `data-help-page` en el `<body>`. `app.js` sólo ofrece los recorridos
+  registrados para esa clave.
+- Cada paso de un recorrido se filtra en tiempo de ejecución contra el DOM real
+  (`element.offsetParent !== null`). Un paso que apunta a un elemento oculto o
+  condicionado a permisos (por ejemplo, "Subir archivo" para un usuario de solo
+  lectura) se omite en vez de romper el recorrido.
+- Ningún recorrido se dispara solo: es enteramente bajo demanda. Se descartó
+  el onboarding automático en el primer login para no necesitar una marca de
+  "ya lo vio" (columna nueva o `localStorage`); si se agrega más adelante,
+  puede convivir con este menú sin conflicto.
+- Anclas añadidas como `data-tour="..."` en `dashboard.blade.php` (navegación,
+  acciones rápidas, indicadores, archivos recientes) y en
+  `folders/index.blade.php` (breadcrumbs, acciones de la ubicación, resumen,
+  filtros, contenido).
+- El panel del menú (`data-help-menu`, `data-help-menu-panel`) es un
+  desplegable propio del proyecto: se cierra con clic afuera, con Escape y
+  gestiona `aria-expanded`; no depende de ninguna librería de menús.
+- Dos recorridos implementados como ejemplo: **Inicio** y **Explorador**
+  (Mis archivos, Mi departamento, Públicos y Papelera comparten la misma
+  clave `explorer`). El resto de páginas muestra el mensaje «Todavía no hay un
+  recorrido guiado disponible para esta página» en vez de ocultar el botón.
+- `GuidedTourTest` protege el contrato entre las vistas y el JavaScript: los
+  atributos `data-help-page` y `data-tour` deben seguir presentes para que los
+  recorridos definidos en `app.js` encuentren sus objetivos.
+
+**Pendiente:** replicar el botón de ayuda en el layout administrativo
+(`components/layouts/admin.blade.php`), que tiene su propio encabezado y hoy no
+lo incluye.
+
+### Ayuda puntual junto a controles complejos (ampliación fuera de épicos)
+
+Componente `x-ui.help-tip`: un botón `?` pequeño que abre un popover con una
+explicación breve, para controles cuyo comportamiento no es obvio con solo
+verlos. Es un mecanismo aparte de los recorridos de driver.js, no una
+extensión de ellos.
+
+- **Por qué no usa driver.js:** dos de los cuatro sitios elegidos viven dentro
+  de un `x-ui.modal` (`fixed inset-0 z-50` con su propio fondo semitransparente).
+  El overlay de pantalla completa de un recorrido de driver.js chocaría con ese
+  fondo. Un popover propio, ligero, evita el problema por completo.
+- El popover se ancla a la **izquierda** del botón, no centrado, porque el
+  panel de `x-ui.modal` usa `overflow-y-auto`, que por especificación CSS
+  también recorta el desbordamiento horizontal (`overflow-x` pasa a `auto`
+  cuando `overflow-y` no es `visible`). Centrar el popover arriesgaba
+  recortarlo cerca de los bordes del modal.
+- Manejo por **delegación de eventos** en `app.js` (`closeAllHelpTips`, un
+  único listener en `document`), no un listener por instancia, porque puede
+  haber muchas copias en una sola página (un modal de purga por cada archivo o
+  carpeta en la papelera administrativa).
+- Cuatro instancias implementadas, elegidas por explicar un comportamiento no
+  obvio y no solo "dónde está el botón":
+  - **Alcance de colaboración** (`folders/partials/collaboration-fields.blade.php`):
+    diferencia entre "todo el departamento" y "personas específicas" con
+    permisos internos propios.
+  - **Confirmación por nombre exacto** (`admin/trash.blade.php`, en los dos
+    modales de purga): por qué se exige escribir el nombre antes de eliminar
+    definitivamente.
+  - **Última validación vs. comprobación en vivo** (`admin/settings.blade.php`):
+    distingue evidencia pasiva de sesión de una consulta activa al API.
+  - **Origen administrativa/de usuario** (`admin/audit.blade.php`): qué
+    significa cada valor del filtro de origen en la bitácora.
+- `HelpTipTest` verifica las cuatro ubicaciones con el texto real de cada
+  explicación, no sólo la presencia del atributo `data-help-tip`.
+
+### Correcciones de UX tras la revisión de todas las vistas (ampliación fuera de épicos)
+
+Aplicación de los hallazgos priorizados en la revisión de UX del 14 de agosto
+de 2026. Se excluyó a propósito el hallazgo de mayor esfuerzo (carga por AJAX
+de los modales de reclasificación, que hoy repiten el selector completo de
+colaboradores por cada archivo o carpeta de la página) por ser un cambio de
+arquitectura que merece su propia decisión, no una corrección puntual.
+
+- **Páginas de error con marca propia** (`resources/views/errors/403|404|419|429|500|503.blade.php`,
+  vía el nuevo `x-layouts.error`): antes caían en la vista genérica de
+  Laravel. El CTA principal distingue sesión autenticada de invitado.
+  - Riesgo detectado y corregido antes de publicarse: el botón "volver atrás"
+    de 419 usaba `onclick` en línea, que la CSP del proyecto bloquea
+    (`script-src` sin `unsafe-inline`); se sustituyó por un enlace normal.
+  - Segundo riesgo detectado y corregido: el modo mantenimiento (503)
+    intercepta la petición antes de que la sesión arranque, así que `@auth`
+    ahí lanzaría `RuntimeException: Session store not set on request`. El
+    layout acepta `:requires-session="false"` para omitir esa comprobación;
+    503 es la única vista que la usa.
+  - Antes de construir esto se verificó empíricamente (no se asumió) si las
+    cabeceras de seguridad sobreviven a una respuesta 403/404 real, dado que
+    `SecurityHeaders` las escribe después de `$next($request)`. Sí sobreviven;
+    no había ninguna brecha.
+- **Paginación con la paleta del proyecto** (`resources/views/vendor/pagination/tailwind.blade.php`):
+  sustituye el tema gris por defecto de Laravel en las ~10 listas paginadas de
+  la aplicación. Se descubre automáticamente por convención de Laravel; no
+  requirió publicar nada ni tocar configuración.
+- **Filtros colapsables en móvil** (`x-ui.collapsible-filters`, `<details>`
+  nativo sin dependencias): antes el panel de filtros se mostraba siempre
+  expandido, obligando a desplazarse en móvil antes de ver cualquier
+  contenido. Colapsado por defecto; `app.js` lo abre automáticamente en
+  escritorio (`>= 1024px`, el mismo punto de quiebre `lg:` que ya usa el resto
+  de la interfaz) para no alterar el comportamiento que ya existía ahí.
+  Aplicado en el explorador y en Archivos, Papelera, Usuarios, Departamentos y
+  Auditoría del panel admin.
+- **Acciones directas en el detalle de archivo administrativo**
+  (`admin/file-show.blade.php`): antes era de solo lectura; para descargar,
+  reclasificar o enviar a papelera había que volver al listado. Ahora ofrece
+  las mismas tres acciones que la fila del listado, con los mismos dos
+  modales, gestionadas por el mismo permiso `nube_administracion_administrar`.
+  El enlace "Volver" se corrigió de `url()->previous()` (podía apuntar a
+  cualquier referente) a la ruta fija del listado.
+- **Acceso al panel admin desde la barra inferior móvil**
+  (`components/navigation/mobile-nav.blade.php`): antes sólo estaba en la
+  barra lateral de escritorio y en el menú hamburguesa móvil, no en la barra
+  fija inferior que es el patrón de navegación principal en ese tamaño de
+  pantalla. Visible únicamente para el rol `superuser`.
+- **Tamaños de página unificados**: el explorador personal usaba 10/25/50
+  mientras los cuatro listados administrativos comparables (Archivos,
+  Papelera, Usuarios, Departamentos) usaban 10/20/50. Se alineó el explorador
+  a 10/20/50, tanto en la vista como en `BrowseExplorerRequest`. Auditoría
+  conserva 25/50/100 a propósito, por su mayor volumen típico de registros.
+- Eliminado `resources/views/welcome.blade.php` (277 líneas): la portada por
+  defecto de Laravel, sin ninguna ruta que la sirviera.
+- Pruebas nuevas: `CustomErrorPagesTest`, `BrandedPaginationTest`,
+  `CollapsibleFiltersTest`, `AdminFileDetailActionsTest` y
+  `MobileAdminNavigationTest`.
+
 ## Decisiones que deben conservarse
 
 - El sistema de accesos es la fuente oficial de usuarios, departamentos, roles
@@ -711,7 +840,7 @@ administrador de secretos del entorno.
 
 ## Verificación al cierre
 
-- Pruebas: **197 aprobadas, 1295 aserciones**.
+- Pruebas: **216 aprobadas, 1399 aserciones**.
 - Laravel Pint: aprobado.
 - Compilación de Vite: aprobada.
 - Programación diaria: aprobada mediante `php artisan schedule:list`.

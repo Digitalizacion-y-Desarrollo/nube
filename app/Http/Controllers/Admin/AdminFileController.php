@@ -134,9 +134,27 @@ class AdminFileController extends Controller
         $this->authorize('viewAdministrative', $file);
         $this->audit($request, 'admin.file.metadata_viewed', $file);
 
+        $departmentUsers = User::query()
+            ->with('roles:id,name,display_name')
+            ->where('active', true)
+            ->where('department_id', $file->department_id)
+            ->orderBy('name')
+            ->orderBy('last_name')
+            ->get(['id', 'department_id', 'name', 'last_name', 'email'])
+            ->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'position' => null,
+                'role' => $user->roles->pluck('display_name')->filter()->join(', '),
+            ]);
+
         return view('admin.file-show', [
             ...$this->layoutData($request),
             'file' => $file,
+            'departmentUsers' => $departmentUsers,
+            'canOperate' => $request->user()->hasPermission('nube_administracion_administrar'),
         ]);
     }
 

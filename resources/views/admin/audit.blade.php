@@ -30,7 +30,8 @@
         </article>
     </section>
 
-    <form action="{{ route('admin.audit') }}" method="GET" class="mb-5 rounded-xl border border-line bg-surface p-4" aria-label="Filtros de auditoría">
+    <x-ui.collapsible-filters label="Buscar y filtrar">
+    <form action="{{ route('admin.audit') }}" method="GET" aria-label="Filtros de auditoría">
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <label class="block">
                 <span class="mb-1.5 block text-xs font-semibold text-muted">Acción o identificador</span>
@@ -79,7 +80,15 @@
                 <input type="text" name="ip" value="{{ $filters['ip'] ?? '' }}" placeholder="Ej. 10.0.0.5" class="h-11 w-full rounded-lg border border-line bg-surface px-3.5 text-sm outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
             </label>
             <label class="block">
-                <span class="mb-1.5 block text-xs font-semibold text-muted">Origen</span>
+                <span class="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted">
+                    Origen
+                    <x-ui.help-tip label="Cómo se distingue el origen de un evento">
+                        <strong class="block text-ink">Administrativas</strong>
+                        Acciones realizadas desde el panel de superusuario.
+                        <strong class="mt-2 block text-ink">De usuarios</strong>
+                        Operación normal de la nube personal de cada quien.
+                    </x-ui.help-tip>
+                </span>
                 <select name="scope" class="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
                     <option value="all" @selected(($filters['scope'] ?? 'all') === 'all')>Todos</option>
                     <option value="administrative" @selected(($filters['scope'] ?? '') === 'administrative')>Administrativas</option>
@@ -112,6 +121,7 @@
             </div>
         </div>
     </form>
+    </x-ui.collapsible-filters>
 
     <x-ui.alert tone="info" class="mb-5">
         La bitácora es de solo lectura. Los eventos no pueden editarse ni eliminarse desde la plataforma.
