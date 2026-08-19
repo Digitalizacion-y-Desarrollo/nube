@@ -198,6 +198,53 @@ class AdminFileExplorerTest extends TestCase
         );
     }
 
+    public function test_authorized_superuser_previews_a_supported_file_with_audit(): void
+    {
+        Storage::fake('nube');
+        $superuser = $this->superuser(withAdministrationPermission: true);
+        $owner = User::factory()->create();
+
+        $previewable = File::factory()->create([
+            'owner_id' => $owner->id,
+            'department_id' => $owner->department_id,
+            'display_name' => 'Vista previa.pdf',
+            'stored_name' => 'vista-previa.pdf',
+            'disk' => 'nube',
+            'path' => 'temporales/vista-previa.pdf',
+            'extension' => 'pdf',
+            'mime_type' => 'application/pdf',
+            'visibility' => FileVisibility::Private,
+        ]);
+        Storage::disk('nube')->put($previewable->path, 'contenido seguro');
+
+        $response = $this->authenticated($superuser, ['nube_administracion_administrar'])
+            ->get(route('admin.files.preview', $previewable))
+            ->assertOk();
+
+        $this->assertStringContainsString('inline', $response->headers->get('Content-Disposition'));
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $superuser->id,
+            'action' => 'admin.file.previewed',
+            'resource_id' => $previewable->id,
+        ]);
+
+        $unsupported = File::factory()->create([
+            'owner_id' => $owner->id,
+            'department_id' => $owner->department_id,
+            'disk' => 'nube',
+            'path' => 'temporales/hoja.xlsx',
+            'extension' => 'xlsx',
+            'mime_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'visibility' => FileVisibility::Private,
+        ]);
+        Storage::disk('nube')->put($unsupported->path, 'contenido');
+
+        $this->authenticated($superuser, ['nube_administracion_administrar'])
+            ->get(route('admin.files.preview', $unsupported))
+            ->assertNotFound();
+    }
+
     public function test_authorized_superuser_selects_the_department_or_specific_people_when_collaborating(): void
     {
         Storage::fake('nube');

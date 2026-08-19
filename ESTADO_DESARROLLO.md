@@ -1,4 +1,4 @@
-# Estado de desarrollo — Nube Empresarial
+# Estado de desarrollo — Nube Municipal
 
 Este archivo es la bitácora de continuidad del proyecto. Debe actualizarse al
 final de cada sesión de trabajo y consultarse antes de iniciar una nueva.

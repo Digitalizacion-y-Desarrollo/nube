@@ -7,9 +7,17 @@ use App\Enums\FileVisibility;
 use App\Models\File;
 use App\Models\Folder;
 use App\Models\User;
+use App\Notifications\DepartmentFileUploadedNotification;
+use App\Notifications\FileSharedNotification;
+use App\Notifications\PublicFileUploadedNotification;
 use App\Services\Sharing\CollaboratorPermissionService;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Notifications\Notification as NotificationBase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -29,6 +37,7 @@ class FileStorageService
         ?CollaborationScope $collaborationScope = null,
         array $collaboratorIds = [],
         array $permissionsByUser = [],
+        ?string $displayName = null,
     ): File {
         $extension = strtolower($upload->getClientOriginalExtension());
         $storedName = Str::uuid()->toString().($extension === '' ? '' : ".{$extension}");
@@ -46,7 +55,7 @@ class FileStorageService
         }
 
         try {
-            return DB::transaction(function () use (
+            $file = DB::transaction(function () use (
                 $upload,
                 $owner,
                 $folder,
@@ -58,13 +67,16 @@ class FileStorageService
                 $collaboratorIds,
                 $permissionsByUser,
                 $departmentId,
+                $displayName,
             ): File {
+                $safeOriginalName = $this->safeOriginalName($upload);
+
                 $file = File::query()->create([
                     'folder_id' => $folder?->id,
                     'owner_id' => $owner->id,
                     'department_id' => $departmentId,
-                    'original_name' => $this->safeOriginalName($upload),
-                    'display_name' => $this->safeOriginalName($upload),
+                    'original_name' => $safeOriginalName,
+                    'display_name' => $displayName ?? $safeOriginalName,
                     'stored_name' => $storedName,
                     'disk' => 'nube',
                     'path' => $path,
@@ -96,6 +108,10 @@ class FileStorageService
 
             throw $exception;
         }
+
+        $this->notifyUpload($file, $owner, $collaborationScope, $collaboratorIds);
+
+        return $file;
     }
 
     public function rename(File $file, string $displayName): File
@@ -201,6 +217,9 @@ class FileStorageService
         array $collaboratorIds = [],
         array $permissionsByUser = [],
     ): File {
+        $previousCollaboratorIds = $file->collaboration_scope === CollaborationScope::Selected
+            ? $file->collaborators()->pluck('id')->all()
+            : [];
         $oldPath = $file->path;
         $sameVisibility = $file->visibility === $visibility;
         $newPath = $sameVisibility
@@ -218,7 +237,7 @@ class FileStorageService
         }
 
         try {
-            return DB::transaction(function () use (
+            $updatedFile = DB::transaction(function () use (
                 $file,
                 $visibility,
                 $newPath,
@@ -255,6 +274,13 @@ class FileStorageService
 
             throw $exception;
         }
+
+        if ($visibility === FileVisibility::Collaborative && $collaborationScope === CollaborationScope::Selected) {
+            $newCollaboratorIds = array_values(array_diff($collaboratorIds, $previousCollaboratorIds));
+            $this->notifySharedCollaborators($updatedFile, $newCollaboratorIds);
+        }
+
+        return $updatedFile;
     }
 
     public function forceDelete(File $file): void
@@ -324,6 +350,108 @@ class FileStorageService
 
         if ($filesystem->exists($from) && ! $filesystem->exists($to)) {
             $filesystem->move($from, $to);
+        }
+    }
+
+    /**
+     * @param  list<int>  $collaboratorIds
+     */
+    private function notifyUpload(
+        File $file,
+        User $owner,
+        ?CollaborationScope $collaborationScope,
+        array $collaboratorIds,
+    ): void {
+        if ($file->visibility === FileVisibility::Public) {
+            $this->notifyRecipients(
+                $this->activeUsersWithPermission('nube_publicos_ver', except: $owner->id),
+                new PublicFileUploadedNotification($file, $owner),
+            );
+
+            return;
+        }
+
+        if ($file->visibility !== FileVisibility::Collaborative) {
+            return;
+        }
+
+        if ($collaborationScope === CollaborationScope::Selected) {
+            $this->notifySharedCollaborators($file, $collaboratorIds, $owner);
+
+            return;
+        }
+
+        $this->notifyRecipients(
+            $this->activeUsersWithPermission(
+                'nube_departamento_ver',
+                except: $owner->id,
+                departmentId: $file->department_id,
+            ),
+            new DepartmentFileUploadedNotification($file, $owner),
+        );
+    }
+
+    /**
+     * @param  list<int>  $collaboratorIds
+     */
+    private function notifySharedCollaborators(
+        File $file,
+        array $collaboratorIds,
+        ?User $actor = null,
+    ): void {
+        if ($collaboratorIds === []) {
+            return;
+        }
+
+        $actor ??= Auth::user();
+
+        if (! $actor instanceof User) {
+            return;
+        }
+
+        $recipients = User::query()
+            ->whereIn('id', $collaboratorIds)
+            ->where('id', '!=', $actor->id)
+            ->get();
+
+        $this->notifyRecipients($recipients, new FileSharedNotification($file, $actor));
+    }
+
+    /**
+     * @return EloquentCollection<int, User>
+     */
+    private function activeUsersWithPermission(
+        string $permission,
+        int $except,
+        ?int $departmentId = null,
+    ): EloquentCollection {
+        return User::query()
+            ->where('active', true)
+            ->where('id', '!=', $except)
+            ->when(
+                $departmentId !== null,
+                fn (Builder $query): Builder => $query->where('department_id', $departmentId),
+            )
+            ->whereHas(
+                'permissions',
+                fn (Builder $query): Builder => $query->where('name', $permission),
+            )
+            ->get();
+    }
+
+    /**
+     * @param  EloquentCollection<int, User>  $recipients
+     */
+    private function notifyRecipients(EloquentCollection $recipients, NotificationBase $notification): void
+    {
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        try {
+            Notification::send($recipients, $notification);
+        } catch (Throwable $exception) {
+            report($exception);
         }
     }
 }

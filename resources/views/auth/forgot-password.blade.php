@@ -3,7 +3,7 @@
         <section class="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8">
             <div class="mb-8 flex items-center gap-2">
                 <x-ui.brand-logo alt="" width="48" height="32" class="h-8 w-12 rounded-md" />
-                <span class="text-xs font-bold text-muted">NUBE EMPRESARIAL</span>
+                <span class="text-xs font-bold text-muted">NUBE Municipal</span>
             </div>
 
             <h1 class="text-2xl font-bold text-brand dark:text-white">Recuperar contraseña</h1>

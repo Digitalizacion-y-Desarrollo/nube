@@ -15,10 +15,28 @@
                             type="file"
                             name="file"
                             required
+                            data-file-upload-input
                             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.zip"
                             class="block w-full rounded-lg border border-line bg-surface text-sm text-ink file:mr-4 file:border-0 file:bg-brand file:px-4 file:py-3 file:font-semibold file:text-white hover:file:bg-brand-dark"
                         >
                     </label>
+
+                    <label class="block">
+                        <span class="mb-1.5 block text-[13px] font-semibold text-muted">Nombre para mostrar</span>
+                        <input
+                            type="text"
+                            name="display_name"
+                            data-file-upload-name
+                            maxlength="255"
+                            placeholder="Se completa con el nombre del archivo seleccionado"
+                            value="{{ old('display_name') }}"
+                            class="h-11 w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10"
+                        >
+                        <span class="mt-1.5 block text-xs text-muted">Puedes editarlo antes de subir. Si lo dejas vacío, se usará el nombre del archivo seleccionado.</span>
+                    </label>
+                    @if ($errors->uploadFile->has('display_name'))
+                        <x-ui.alert>{{ $errors->uploadFile->first('display_name') }}</x-ui.alert>
+                    @endif
 
                     <div class="rounded-xl border border-line bg-surface-alt px-3.5 py-3">
                         <input type="hidden" name="visibility" data-sharing-visibility value="{{ $defaultUploadVisibility }}">
@@ -500,6 +518,8 @@
         @endforeach
     </x-slot:folderModal>
 
+    <x-files.preview-modal />
+
     @if (session('status'))
         <x-ui.alert tone="success" class="mb-5">{{ session('status') }}</x-ui.alert>
     @endif
@@ -791,8 +811,21 @@
                                 </span>
                             @endif
                         </span>
-                        @if ($item['can_download'] || $item['can_rename'] || $item['can_move'] || $item['can_delete'] || $item['can_change_visibility'] || $item['can_restore'] || $item['can_force_delete'])
+                        @if ($item['can_preview'] || $item['can_download'] || $item['can_rename'] || $item['can_move'] || $item['can_delete'] || $item['can_change_visibility'] || $item['can_restore'] || $item['can_force_delete'])
                             <span class="flex shrink-0 items-center">
+                                @if ($item['can_preview'])
+                                    <button
+                                        type="button"
+                                        data-preview-open
+                                        data-preview-url="{{ $item['preview_url'] }}"
+                                        data-preview-type="{{ $item['preview_type'] }}"
+                                        data-preview-name="{{ $item['name'] }}"
+                                        class="flex size-10 items-center justify-center rounded-full hover:bg-soft"
+                                        aria-label="Ver {{ $item['name'] }}"
+                                    >
+                                        <x-ui.icon name="eye" :size="17" alt="" />
+                                    </button>
+                                @endif
                                 @if ($item['can_download'])
                                     <a href="{{ $item['download_url'] }}" class="flex size-10 items-center justify-center rounded-full hover:bg-soft" aria-label="Descargar {{ $item['name'] }}">
                                         <x-ui.icon name="arrow-down" :size="17" alt="" />
@@ -884,8 +917,20 @@
                                     @endif
                                 </td>
                                 <td class="px-5 py-3">
-                                    @if ($item['can_download'] || $item['can_rename'] || $item['can_move'] || $item['can_delete'] || $item['can_change_visibility'] || $item['can_restore'] || $item['can_force_delete'])
+                                    @if ($item['can_preview'] || $item['can_download'] || $item['can_rename'] || $item['can_move'] || $item['can_delete'] || $item['can_change_visibility'] || $item['can_restore'] || $item['can_force_delete'])
                                         <span class="flex justify-end gap-1">
+                                            @if ($item['can_preview'])
+                                                <button
+                                                    type="button"
+                                                    data-preview-open
+                                                    data-preview-url="{{ $item['preview_url'] }}"
+                                                    data-preview-type="{{ $item['preview_type'] }}"
+                                                    data-preview-name="{{ $item['name'] }}"
+                                                    class="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand hover:bg-brand/10 dark:text-white"
+                                                >
+                                                    Ver
+                                                </button>
+                                            @endif
                                             @if ($item['can_download'])
                                                 <a href="{{ $item['download_url'] }}" class="flex size-8 items-center justify-center rounded-full hover:bg-soft" aria-label="Descargar {{ $item['name'] }}">
                                                     <x-ui.icon name="arrow-down" :size="16" alt="" />

@@ -55,6 +55,53 @@ class FileManagementTest extends TestCase
         ]);
     }
 
+    public function test_file_can_be_uploaded_with_a_custom_display_name(): void
+    {
+        Storage::fake('nube');
+        $user = User::factory()->create();
+        $folder = $this->folder($user, 'Contratos');
+
+        $this->authenticated($user, ['nube.archivos.subir'])
+            ->post(route('files.store'), [
+                'file' => UploadedFile::fake()->create(
+                    'contrato.pdf',
+                    512,
+                    'application/pdf',
+                ),
+                'folder_id' => $folder->id,
+                'display_name' => 'Contrato firmado 2026.pdf',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $file = File::query()->firstOrFail();
+
+        $this->assertSame('contrato.pdf', $file->original_name);
+        $this->assertSame('Contrato firmado 2026.pdf', $file->display_name);
+    }
+
+    public function test_upload_rejects_a_display_name_already_used_in_the_same_location(): void
+    {
+        Storage::fake('nube');
+        $user = User::factory()->create();
+        $folder = $this->folder($user, 'Contratos');
+        $this->storedFile($user, 'Existente.pdf', $folder);
+
+        $this->authenticated($user, ['nube.archivos.subir'])
+            ->post(route('files.store'), [
+                'file' => UploadedFile::fake()->create(
+                    'otro.pdf',
+                    512,
+                    'application/pdf',
+                ),
+                'folder_id' => $folder->id,
+                'display_name' => 'existente.pdf',
+            ])
+            ->assertSessionHasErrors('display_name', errorBag: 'uploadFile');
+
+        $this->assertSame(1, File::query()->count());
+    }
+
     public function test_upload_limit_is_exactly_200_mb_and_invalid_types_are_rejected(): void
     {
         Storage::fake('nube');
@@ -195,6 +242,53 @@ class FileManagementTest extends TestCase
             'action' => 'file.downloaded',
             'resource_id' => $file->id,
         ]);
+    }
+
+    public function test_owner_can_preview_pdf_file_and_action_is_audited(): void
+    {
+        Storage::fake('nube');
+        $user = User::factory()->create();
+        $file = $this->storedFile($user, 'reporte.pdf');
+        $file->update(['extension' => 'pdf', 'mime_type' => 'application/pdf']);
+
+        $response = $this->authenticated($user, ['nube.archivos.descargar'])
+            ->get(route('files.preview', $file))
+            ->assertOk();
+
+        $this->assertStringContainsString('inline', $response->headers->get('Content-Disposition'));
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'file.previewed',
+            'resource_id' => $file->id,
+        ]);
+    }
+
+    public function test_file_without_previewable_mime_type_cannot_be_previewed(): void
+    {
+        Storage::fake('nube');
+        $user = User::factory()->create();
+        $file = $this->storedFile($user, 'contrato.docx');
+        $file->update([
+            'extension' => 'docx',
+            'mime_type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ]);
+
+        $this->authenticated($user, ['nube.archivos.descargar'])
+            ->get(route('files.preview', $file))
+            ->assertNotFound();
+    }
+
+    public function test_private_file_cannot_be_previewed_by_another_user(): void
+    {
+        Storage::fake('nube');
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $file = $this->storedFile($owner, 'privado.pdf');
+        $file->update(['extension' => 'pdf', 'mime_type' => 'application/pdf']);
+
+        $this->authenticated($other, ['nube_mis_archivos_descargar'])
+            ->get(route('files.preview', $file))
+            ->assertForbidden();
     }
 
     public function test_private_file_cannot_be_downloaded_by_another_user_or_when_missing(): void

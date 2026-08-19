@@ -15,6 +15,7 @@ class SecurityHeaders
 
         $response = $next($request);
         $nonce = Vite::cspNonce();
+        $isFramedPreview = $request->routeIs('files.preview', 'admin.files.preview');
         $localAssetSources = app()->isLocal()
             ? ' http://localhost:5173 http://127.0.0.1:5173'
             : '';
@@ -25,8 +26,8 @@ class SecurityHeaders
             "default-src 'self'",
             "base-uri 'self'",
             "object-src 'none'",
-            "frame-src 'none'",
-            "frame-ancestors 'none'",
+            "frame-src 'self'",
+            'frame-ancestors '.($isFramedPreview ? "'self'" : "'none'"),
             "form-action 'self'",
             "script-src 'self' 'nonce-{$nonce}'{$localAssetSources}",
             "style-src 'self' 'unsafe-inline' https://fonts.bunny.net{$localAssetSources}",
@@ -43,7 +44,7 @@ class SecurityHeaders
 
         $response->headers->set('Content-Security-Policy', $policy);
         $response->headers->set('X-Content-Type-Options', 'nosniff');
-        $response->headers->set('X-Frame-Options', 'DENY');
+        $response->headers->set('X-Frame-Options', $isFramedPreview ? 'SAMEORIGIN' : 'DENY');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set(
             'Permissions-Policy',

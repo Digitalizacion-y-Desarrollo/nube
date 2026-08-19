@@ -37,6 +37,9 @@ class FileController extends Controller
 
         $this->authorize('upload', [File::class, $folder, $visibility]);
 
+        $displayName = $request->validated('display_name');
+        $displayName = is_string($displayName) && $displayName !== '' ? $displayName : null;
+
         try {
             $file = $this->storage->upload(
                 $request->file('file'),
@@ -46,6 +49,7 @@ class FileController extends Controller
                 $collaborationScope,
                 $request->validated('collaborators', []),
                 $request->validated('collaborator_permissions', []),
+                $displayName,
             );
 
             if ($collaborationScope === CollaborationScope::Selected) {
@@ -80,6 +84,20 @@ class FileController extends Controller
         ]);
 
         return Storage::disk($file->disk)->download($file->path, $file->display_name);
+    }
+
+    public function preview(Request $request, File $file): StreamedResponse
+    {
+        $this->authorize('download', $file);
+        abort_unless($file->previewType() !== null, 404);
+        abort_unless($this->storage->exists($file), 404);
+
+        $this->auditFile($request, 'file.previewed', $file, [
+            'display_name' => $file->display_name,
+            'folder_id' => $file->folder_id,
+        ]);
+
+        return Storage::disk($file->disk)->response($file->path, $file->display_name);
     }
 
     public function update(

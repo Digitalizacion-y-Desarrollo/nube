@@ -27,7 +27,6 @@
         <div class="flex flex-col items-center gap-1.5 px-5 pb-6 pt-3">
             <x-ui.brand-logo width="114" height="76" class="h-[76px] w-[114px] rounded-xl shadow-sm" />
             <p class="text-base font-bold text-ink">Nube Municipal</p>
-            <p class="text-[10px] tracking-[0.15em] text-muted">PORTAL DIGITAL</p>
         </div>
 
         <div class="mb-5 h-px bg-line"></div>

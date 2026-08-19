@@ -53,7 +53,7 @@
             </div>
 
             <p class="mt-10 text-[11px] text-muted">
-                H. Ayuntamiento de Nezahualcóyotl · Nube Empresarial
+                H. Ayuntamiento de Nezahualcóyotl · Nube Municipal
             </p>
         </div>
     </body>

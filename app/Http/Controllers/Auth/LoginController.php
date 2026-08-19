@@ -90,7 +90,7 @@ class LoginController extends Controller
         } catch (AccessAuthorizationException) {
             return $this->failure(
                 $request,
-                'Tu cuenta no tiene acceso a Nube Empresarial. Contacta al administrador de tu departamento.',
+                'Tu cuenta no tiene acceso a Nube Municipal. Contacta al administrador de tu departamento.',
                 'permission',
             );
         } catch (AccessValidationException $exception) {

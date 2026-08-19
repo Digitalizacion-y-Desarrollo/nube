@@ -37,7 +37,7 @@ class InterfaceTest extends TestCase
     {
         $this->get(route('login'))
             ->assertOk()
-            ->assertSee('Nube Empresarial')
+            ->assertSee('Nube Municipal')
             ->assertSee('Iniciar Sesión')
             ->assertSee('Correo electrónico')
             ->assertSee('assets/img/logo_nube.png', false)

@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\FolderController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
@@ -47,6 +48,8 @@ Route::middleware('access.session')->group(function (): void {
         ->name('files.store');
     Route::get('/mis-archivos/archivos/{file}/descargar', [FileController::class, 'download'])
         ->name('files.download');
+    Route::get('/mis-archivos/archivos/{file}/vista-previa', [FileController::class, 'preview'])
+        ->name('files.preview');
     Route::patch('/mis-archivos/archivos/{file}', [FileController::class, 'update'])
         ->name('files.update');
     Route::patch('/mis-archivos/archivos/{file}/mover', [FileController::class, 'move'])
@@ -81,6 +84,10 @@ Route::middleware('access.session')->group(function (): void {
         ->name('profile.avatar.update');
     Route::delete('/perfil/foto', [ProfileController::class, 'destroyAvatar'])
         ->name('profile.avatar.destroy');
+    Route::get('/notificaciones/{notification}/abrir', [NotificationController::class, 'open'])
+        ->name('notifications.open');
+    Route::post('/notificaciones/leer-todas', [NotificationController::class, 'readAll'])
+        ->name('notifications.read-all');
     Route::post('/logout', LogoutController::class)->name('logout');
 });
 
@@ -152,6 +159,7 @@ Route::prefix('admin/archivos')
 
         Route::middleware('admin.permission')->group(function (): void {
             Route::get('/{file}/descargar', 'download')->name('files.download');
+            Route::get('/{file}/vista-previa', 'preview')->name('files.preview');
             Route::patch('/{file}/visibilidad', 'changeVisibility')->name('files.visibility');
             Route::delete('/{file}', 'destroy')->name('files.destroy');
         });

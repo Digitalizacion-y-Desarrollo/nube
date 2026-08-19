@@ -164,6 +164,18 @@
                                 <div class="flex justify-end gap-1.5">
                                     <a href="{{ route('admin.files.show', $file->id) }}" class="inline-flex h-9 items-center rounded-lg border border-line px-3 text-xs font-semibold text-brand hover:border-gold hover:bg-warm dark:text-white">Metadatos</a>
                                     @if ($canOperate && ! $file->trashed())
+                                        @if ($file->previewType())
+                                            <button
+                                                type="button"
+                                                data-preview-open
+                                                data-preview-url="{{ route('admin.files.preview', $file) }}"
+                                                data-preview-type="{{ $file->previewType() }}"
+                                                data-preview-name="{{ $file->display_name }}"
+                                                class="inline-flex h-9 items-center rounded-lg border border-line px-3 text-xs font-semibold text-brand hover:border-gold hover:bg-warm dark:text-white"
+                                            >
+                                                Ver
+                                            </button>
+                                        @endif
                                         <a href="{{ route('admin.files.download', $file) }}" class="inline-flex h-9 items-center rounded-lg border border-line px-3 text-xs font-semibold text-brand hover:border-gold hover:bg-warm dark:text-white">Descargar</a>
                                         <button type="button" data-modal-open="admin-visibility-{{ $file->id }}" class="inline-flex h-9 items-center rounded-lg border border-line px-3 text-xs font-semibold text-brand hover:border-gold hover:bg-warm dark:text-white">Reclasificar</button>
                                         <button type="button" data-modal-open="admin-delete-{{ $file->id }}" class="inline-flex h-9 items-center rounded-lg border border-red-200 px-3 text-xs font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-500/10">Papelera</button>
@@ -269,4 +281,6 @@
             @endunless
         @endforeach
     @endif
+
+    <x-files.preview-modal />
 </x-layouts.admin>

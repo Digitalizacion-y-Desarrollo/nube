@@ -31,6 +31,80 @@
             <kbd class="hidden rounded-md border border-line bg-soft px-2 py-1 text-[10px] font-semibold text-muted lg:inline-flex">⌘ K</kbd>
         </button>
         <x-ui.theme-toggle />
+        <div class="relative" data-notifications-menu>
+            <button
+                type="button"
+                id="notifications-bell"
+                data-notifications-trigger
+                class="relative flex size-10 items-center justify-center rounded-full border border-line bg-surface text-muted transition hover:border-gold hover:bg-warm hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold dark:hover:text-white"
+                aria-label="Notificaciones{{ $unreadNotificationsCount > 0 ? ' ('.$unreadNotificationsCount.' sin leer)' : '' }}"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-controls="notifications-panel"
+                title="Notificaciones"
+            >
+                <x-ui.icon name="bell" :size="20" alt="" />
+                @if ($unreadNotificationsCount > 0)
+                    <span class="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-[18px] text-white">
+                        {{ $unreadNotificationsCount > 9 ? '9+' : $unreadNotificationsCount }}
+                    </span>
+                @endif
+            </button>
+
+            <div
+                id="notifications-panel"
+                data-notifications-panel
+                role="menu"
+                aria-labelledby="notifications-bell"
+                hidden
+                class="absolute right-0 top-full z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-surface p-2 shadow-xl"
+            >
+                <div class="flex items-center justify-between gap-2 px-2.5 pb-2 pt-1.5">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-muted">Notificaciones</p>
+                    @if ($unreadNotificationsCount > 0)
+                        <form action="{{ route('notifications.read-all') }}" method="POST">
+                            @csrf
+                            <button type="submit" class="text-[11px] font-semibold text-brand hover:underline dark:text-gold">
+                                Marcar todas como leídas
+                            </button>
+                        </form>
+                    @endif
+                </div>
+
+                <div class="max-h-96 space-y-0.5 overflow-y-auto">
+                    @forelse ($notifications as $notification)
+                        <a
+                            href="{{ route('notifications.open', $notification->id) }}"
+                            class="flex items-start gap-2 rounded-lg px-2.5 py-2.5 text-left text-sm hover:bg-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                            role="menuitem"
+                        >
+                            <span class="relative shrink-0">
+                                <img
+                                    src="{{ $notification->data['actor_avatar'] ?? asset('assets/figma/avatar-small.png') }}"
+                                    alt=""
+                                    width="32"
+                                    height="32"
+                                    class="size-8 rounded-full object-cover ring-1 ring-line"
+                                >
+                                @if ($notification->read_at === null)
+                                    <span class="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-brand ring-2 ring-surface dark:bg-gold" aria-hidden="true"></span>
+                                @endif
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span @class(['block leading-5 text-ink', 'font-semibold' => $notification->read_at === null])>
+                                    {{ $notification->data['message'] ?? 'Notificación' }}
+                                </span>
+                                <span class="mt-0.5 block text-xs text-muted">{{ $notification->created_at->diffForHumans() }}</span>
+                            </span>
+                        </a>
+                    @empty
+                        <p class="px-2.5 py-3 text-xs leading-5 text-muted">
+                            No tienes notificaciones todavía.
+                        </p>
+                    @endforelse
+                </div>
+            </div>
+        </div>
         <div class="relative" data-help-menu>
             <button
                 type="button"
