@@ -4,7 +4,10 @@ namespace App\Observers;
 
 use App\Models\AuditLog;
 use App\Models\File;
+use App\Models\User;
+use App\Notifications\FileModifiedByAdminNotification;
 use Illuminate\Support\Facades\Auth;
+use Throwable;
 
 class FileObserver
 {
@@ -70,6 +73,10 @@ class FileObserver
             'display_name' => $file->display_name,
             'changes' => $changes,
         ]);
+
+        if ($file->wasChanged(['visibility', 'collaboration_scope', 'display_name', 'folder_id'])) {
+            $this->notifyOwnerIfModifiedByAdmin($file, 'modificó');
+        }
     }
 
     public function deleted(File $file): void
@@ -82,6 +89,8 @@ class FileObserver
             'display_name' => $file->display_name,
             'folder_id' => $file->folder_id,
         ]);
+
+        $this->notifyOwnerIfModifiedByAdmin($file, 'envió a la papelera');
     }
 
     public function restored(File $file): void
@@ -118,5 +127,29 @@ class FileObserver
             'details' => $details,
             'created_at' => now(),
         ]);
+    }
+
+    private function notifyOwnerIfModifiedByAdmin(File $file, string $action): void
+    {
+        $actor = Auth::user();
+
+        if (! $actor instanceof User
+            || $file->owner_id === null
+            || $actor->id === $file->owner_id
+            || ! $actor->hasRole('superuser')) {
+            return;
+        }
+
+        $owner = $file->owner ?? User::query()->find($file->owner_id);
+
+        if ($owner === null) {
+            return;
+        }
+
+        try {
+            $owner->notify(new FileModifiedByAdminNotification($file, $actor, $action));
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 }

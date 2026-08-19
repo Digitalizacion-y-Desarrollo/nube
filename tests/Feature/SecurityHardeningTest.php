@@ -39,6 +39,40 @@ class SecurityHardeningTest extends TestCase
         );
     }
 
+    public function test_preview_route_allows_same_origin_framing_without_weakening_other_routes(): void
+    {
+        Storage::fake('nube');
+        $user = User::factory()->create();
+        $file = File::factory()->create([
+            'owner_id' => $user->id,
+            'department_id' => $user->department_id,
+            'visibility' => FileVisibility::Private,
+            'disk' => 'nube',
+            'extension' => 'pdf',
+            'mime_type' => 'application/pdf',
+        ]);
+        Storage::disk('nube')->put($file->path, 'contenido');
+
+        $previewResponse = $this->authenticated($user, ['nube.archivos.descargar'])
+            ->get(route('files.preview', $file))
+            ->assertOk()
+            ->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+
+        $this->assertStringContainsString(
+            "frame-ancestors 'self'",
+            (string) $previewResponse->headers->get('Content-Security-Policy'),
+        );
+
+        $downloadResponse = $this->get(route('files.download', $file))
+            ->assertOk()
+            ->assertHeader('X-Frame-Options', 'DENY');
+
+        $this->assertStringContainsString(
+            "frame-ancestors 'none'",
+            (string) $downloadResponse->headers->get('Content-Security-Policy'),
+        );
+    }
+
     public function test_private_storage_has_no_public_link_and_is_not_served_from_public(): void
     {
         $this->assertSame([], config('filesystems.links'));

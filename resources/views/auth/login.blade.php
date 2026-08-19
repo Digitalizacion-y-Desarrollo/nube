@@ -13,7 +13,7 @@
             <div class="absolute left-6 right-6 top-[97px] z-10 flex items-center justify-between lg:static lg:block">
                 <div class="inline-flex items-center gap-2 rounded-[10px] border border-gold bg-white/[0.08] px-3 py-2 lg:px-3.5 lg:py-2.5">
                     <x-ui.icon name="shield" :size="16" alt="" />
-                    <span class="text-[10px] font-extrabold uppercase lg:text-xs">Gobierno Municipal<span class="hidden lg:inline"> de Nezahualcóyotl</span></span>
+                    <span class="text-[10px] font-extrabold uppercase lg:text-xs">Municipalierno Municipal<span class="hidden lg:inline"> de Nezahualcóyotl</span></span>
                 </div>
                 <span class="inline-flex items-center gap-1.5 rounded-full border border-gold bg-gold/15 px-2 py-1 text-[9px] font-bold lg:hidden">
                     <x-ui.icon name="folder-lock" :size="12" alt="" />
@@ -26,7 +26,7 @@
                     <x-ui.brand-logo alt="" width="36" height="24" class="h-6 w-9 rounded lg:hidden" />
                     <p class="text-[11px] font-bold uppercase text-gold lg:mb-2.5 lg:text-sm">H. Ayuntamiento</p>
                 </div>
-                <h1 class="text-[28px] font-bold leading-[1.1] lg:text-[44px]">Nube Empresarial</h1>
+                <h1 class="text-[28px] font-bold leading-[1.1] lg:text-[44px]">Nube Municipal</h1>
                 <p class="mt-2 text-[13px] leading-[1.4] text-white/70 lg:mt-2.5 lg:text-base lg:leading-6">Sistema interno de gestión y almacenamiento de archivos<span class="lg:hidden"> oficiales.</span></p>
 
                 <article class="mt-5 hidden rounded-[20px] border border-white/15 bg-white/[0.05] p-6 backdrop-blur-xl lg:block">
@@ -36,23 +36,23 @@
                         </span>
                         <span class="rounded-full border border-gold bg-gold/15 px-2.5 py-1.5 text-[11px] font-bold">SISTEMA SEGURO</span>
                     </div>
-                    <h2 class="text-base font-bold">Infraestructura Nube Gob</h2>
+                    <h2 class="text-base font-bold">Infraestructura Nube Municipal</h2>
                     <p class="mt-2 text-[13px] leading-5 text-white/70">Resguardo digital de expedientes oficiales con cifrado avanzado de grado gubernamental.</p>
                     <img src="{{ asset('assets/figma/login-line.svg') }}" alt="" class="mt-3 h-px w-full">
                 </article>
             </div>
 
             <div class="relative z-10 hidden items-center gap-3 text-[11px] font-semibold text-white/50 lg:flex">
-                <span>Dirección de Tecnologías de la Información</span>
+                <span>Unidad de Simplificación y Digitalización</span>
                 <span class="size-1 rounded-sm bg-gold"></span>
-                <span class="text-gold">México</span>
+                <span class="text-gold">Nezahualcóyotl</span>
             </div>
         </section>
 
         <section class="relative flex min-h-[520px] flex-col items-center bg-white px-6 py-6 lg:min-h-screen lg:justify-between lg:px-20 lg:py-12">
             <div class="hidden items-center gap-2 lg:flex">
                 <x-ui.brand-logo alt="" width="48" height="32" class="h-8 w-12 rounded-md" />
-                <span class="text-xs font-bold text-[#4b5563]">NUBE EMPRESARIAL</span>
+                <span class="text-xs font-bold text-[#4b5563]">NUBE Municipal</span>
             </div>
 
             <form action="{{ route('login.store') }}" method="POST" class="w-full max-w-[560px] lg:my-auto" novalidate data-login-form>
@@ -130,12 +130,9 @@
             </form>
 
             <footer class="mt-8 flex w-full max-w-[560px] flex-col items-center gap-3 border-t border-line pt-4 text-center text-[#9ca3af] lg:mt-0 lg:gap-4 lg:border-0 lg:pt-0">
-                <div class="flex items-center gap-1.5 text-xs">
-                    <x-ui.icon name="lock" :size="14" alt="" />
-                    <span>Conexión segura • SSL/TLS</span>
-                </div>
+
                 <div class="space-y-1">
-                    <p class="text-[11px]">Nube Empresarial v1.0.0</p>
+                    <p class="text-[11px]">Nube Municipal v1.0.0</p>
                     <p class="text-[10px]">Uso exclusivo para personal autorizado del H. Ayuntamiento de Nezahualcóyotl</p>
                 </div>
             </footer>

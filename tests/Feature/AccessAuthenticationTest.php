@@ -246,7 +246,7 @@ class AccessAuthenticationTest extends TestCase
                     ],
                 ],
             ],
-            'system' => ['id' => 4, 'nombre' => 'Nube Empresarial'],
+            'system' => ['id' => 4, 'nombre' => 'Nube Municipal'],
             'roles' => ['nube_colaborador'],
             'permissions' => [
                 'nube_inicio_ver',

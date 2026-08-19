@@ -74,4 +74,20 @@ class File extends Model
                 'created_at',
             ]);
     }
+
+    /**
+     * The browser-renderable kind of this file, or null when it has none.
+     */
+    public function previewType(): ?string
+    {
+        if ($this->mime_type === 'application/pdf') {
+            return 'pdf';
+        }
+
+        if ($this->mime_type !== null && str_starts_with($this->mime_type, 'image/')) {
+            return 'image';
+        }
+
+        return null;
+    }
 }

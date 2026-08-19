@@ -757,6 +757,7 @@ class FolderController extends Controller
             'can_rename' => ! $trashed && $request->user()->can('update', $folder),
             'can_delete' => ! $trashed && $request->user()->can('delete', $folder),
             'can_download' => false,
+            'can_preview' => false,
             'can_move' => ! $trashed && $request->user()->can('move', [$folder, null]),
             'can_change_visibility' => ! $trashed && $visibilityOptions !== [],
             'visibility_options' => $visibilityOptions,
@@ -823,6 +824,10 @@ class FolderController extends Controller
             'url' => null,
             'folder_id' => $file->folder_id,
             'can_download' => ! $trashed && $request->user()->can('download', $file),
+            'can_preview' => ! $trashed
+                && $file->previewType() !== null
+                && $request->user()->can('download', $file),
+            'preview_type' => $file->previewType(),
             'can_rename' => ! $trashed && $request->user()->can('update', $file),
             'can_move' => ! $trashed && $request->user()->can('move', [$file, null]),
             'can_delete' => ! $trashed && $request->user()->can('delete', $file),
@@ -837,6 +842,7 @@ class FolderController extends Controller
                     : "Se elimina en {$daysRemaining} día(s)"),
             'purge_at' => $purgeAt?->translatedFormat('d M Y, H:i'),
             'download_url' => route('files.download', $file),
+            'preview_url' => route('files.preview', $file),
             'update_url' => route('files.update', $file),
             'move_url' => route('files.move', $file),
             'delete_url' => route('files.destroy', $file),

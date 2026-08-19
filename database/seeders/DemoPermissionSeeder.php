@@ -13,7 +13,7 @@ class DemoPermissionSeeder extends Seeder
      * @var array<string, string>
      */
     private const PERMISSIONS = [
-        'nube_inicio_ver' => 'Acceder a Nube Empresarial',
+        'nube_inicio_ver' => 'Acceder a Nube Municipal',
         'nube_mis_archivos_ver' => 'Ver mis archivos',
         'nube_archivos_crear_carpeta' => 'Crear carpetas privadas',
         'nube_mis_archivos_renombrar' => 'Renombrar carpetas privadas',

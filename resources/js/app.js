@@ -189,6 +189,49 @@ const buildHelpMenu = () => {
 
 buildHelpMenu();
 
+const buildNotificationsMenu = () => {
+    const menu = document.querySelector('[data-notifications-menu]');
+    const trigger = menu?.querySelector('[data-notifications-trigger]');
+    const panel = menu?.querySelector('[data-notifications-panel]');
+
+    if (!menu || !trigger || !panel) {
+        return;
+    }
+
+    const closeMenu = () => {
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+    };
+
+    const openMenu = () => {
+        panel.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+    };
+
+    trigger.addEventListener('click', () => {
+        if (panel.hidden) {
+            openMenu();
+        } else {
+            closeMenu();
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!panel.hidden && !menu.contains(event.target)) {
+            closeMenu();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !panel.hidden) {
+            closeMenu();
+            trigger.focus();
+        }
+    });
+};
+
+buildNotificationsMenu();
+
 // Paneles de filtros colapsables (x-ui.collapsible-filters): abiertos por
 // defecto en escritorio para no cambiar el comportamiento actual ahí; en
 // móvil quedan colapsados hasta que el usuario los abre, para no interponer
@@ -352,12 +395,63 @@ const closeModal = (modal) => {
     modal.classList.remove('flex');
     modal.setAttribute('aria-hidden', 'true');
 
+    if (modal === filePreviewModal) {
+        clearFilePreview();
+    }
+
     if (!document.querySelector('[data-modal]:not(.hidden)')) {
         document.body.classList.remove('overflow-hidden');
     }
 
     activeModalTrigger?.focus();
     activeModalTrigger = null;
+};
+
+const filePreviewModal = document.getElementById('file-preview-modal');
+const filePreviewBody = filePreviewModal?.querySelector('[data-preview-body]');
+const filePreviewTitle = filePreviewModal
+    ? document.getElementById('file-preview-modal-title')
+    : null;
+const filePreviewPlaceholder = '<p class="p-6 text-center text-sm text-muted">Selecciona un archivo para previsualizarlo.</p>';
+
+function clearFilePreview() {
+    if (filePreviewBody) {
+        filePreviewBody.innerHTML = filePreviewPlaceholder;
+    }
+}
+
+const openFilePreview = (trigger) => {
+    if (!filePreviewModal || !filePreviewBody) {
+        return;
+    }
+
+    const url = trigger.dataset.previewUrl;
+    const type = trigger.dataset.previewType;
+    const name = trigger.dataset.previewName || 'Archivo';
+
+    if (filePreviewTitle) {
+        filePreviewTitle.textContent = name;
+    }
+
+    filePreviewBody.innerHTML = '';
+
+    if (type === 'image') {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = name;
+        img.className = 'max-h-[75vh] w-auto max-w-full rounded-lg object-contain';
+        filePreviewBody.append(img);
+    } else if (type === 'pdf') {
+        const iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.title = name;
+        iframe.className = 'h-[75vh] w-full rounded-lg border-0';
+        filePreviewBody.append(iframe);
+    } else {
+        clearFilePreview();
+    }
+
+    openModal(filePreviewModal, trigger);
 };
 
 const globalSearch = document.querySelector('[data-global-search]');
@@ -596,6 +690,11 @@ document.addEventListener('click', (event) => {
         openModal(modal, modalOpen);
     }
 
+    const previewOpen = event.target.closest('[data-preview-open]');
+    if (previewOpen) {
+        openFilePreview(previewOpen);
+    }
+
     const modalClose = event.target.closest('[data-modal-close]');
     if (modalClose) {
         const modal = document.getElementById(modalClose.dataset.modalClose);
@@ -811,6 +910,21 @@ document.querySelectorAll('[data-collaborator-picker]').forEach((picker) => {
 });
 
 document.querySelectorAll('[data-file-upload-form]').forEach((form) => {
+    const fileInput = form.querySelector('[data-file-upload-input]');
+    const nameInput = form.querySelector('[data-file-upload-name]');
+
+    fileInput?.addEventListener('change', () => {
+        if (!nameInput || nameInput.value.trim() !== '') {
+            return;
+        }
+
+        const selectedFile = fileInput.files?.[0];
+
+        if (selectedFile) {
+            nameInput.value = selectedFile.name;
+        }
+    });
+
     form.addEventListener('submit', () => {
         const button = form.querySelector('[data-file-upload-submit]');
         const label = form.querySelector('[data-file-upload-label]');

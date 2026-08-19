@@ -380,7 +380,7 @@ explícitamente todos los permisos que necesite.
 #### Catálogo de permisos por recurso
 
 Este catálogo define el contrato funcional esperado y se administra en el
-sistema de accesos. Nube Empresarial no lo duplicará en un seeder de
+sistema de accesos. Nube Municipal no lo duplicará en un seeder de
 producción; registrará localmente las claves conforme las reciba del API.
 
 Recurso `nube_inicio`:

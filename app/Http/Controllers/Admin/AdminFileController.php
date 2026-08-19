@@ -168,6 +168,17 @@ class AdminFileController extends Controller
         return Storage::disk($file->disk)->download($file->path, $file->display_name);
     }
 
+    public function preview(Request $request, File $file): StreamedResponse
+    {
+        $this->authorize('downloadAdministrative', $file);
+        abort_unless($file->previewType() !== null, 404);
+        abort_unless($this->storage->exists($file), 404);
+
+        $this->audit($request, 'admin.file.previewed', $file);
+
+        return Storage::disk($file->disk)->response($file->path, $file->display_name);
+    }
+
     public function changeVisibility(
         ChangeAdminFileVisibilityRequest $request,
         File $file,
