@@ -31,7 +31,7 @@ class FileController extends Controller
             ? null
             : Folder::query()->findOrFail($request->validated('folder_id'));
         $visibility = FileVisibility::from($request->validated('visibility'));
-        $collaborationScope = $visibility === FileVisibility::Collaborative
+        $collaborationScope = ($visibility === FileVisibility::Collaborative || $request->boolean('share_privately'))
             ? CollaborationScope::from($request->validated('collaboration_scope'))
             : null;
 
@@ -50,6 +50,7 @@ class FileController extends Controller
                 $request->validated('collaborators', []),
                 $request->validated('collaborator_permissions', []),
                 $displayName,
+                $request->validated('sharing_expires_at'),
             );
 
             if ($collaborationScope === CollaborationScope::Selected) {
@@ -166,7 +167,7 @@ class FileController extends Controller
         File $file,
     ): RedirectResponse {
         $visibility = FileVisibility::from($request->validated('visibility'));
-        $collaborationScope = $visibility === FileVisibility::Collaborative
+        $collaborationScope = ($visibility === FileVisibility::Collaborative || $request->boolean('share_privately'))
             ? CollaborationScope::from($request->validated('collaboration_scope'))
             : null;
         $this->authorize('changeVisibility', [$file, $visibility]);
@@ -179,6 +180,7 @@ class FileController extends Controller
                 $collaborationScope,
                 $request->validated('collaborators', []),
                 $request->validated('collaborator_permissions', []),
+                $request->validated('sharing_expires_at'),
             );
 
             if ($collaborationScope === CollaborationScope::Selected) {

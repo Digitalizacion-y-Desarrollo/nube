@@ -58,6 +58,13 @@
                     <span class="lg:hidden">Departamento</span>
                     <span class="hidden lg:inline">Archivos del departamento</span>
                 </a>
+                <a href="{{ route('folders.shared') }}" class="inline-flex h-12 items-center justify-start gap-2 rounded-[10px] border border-gold bg-warm px-3 text-sm font-semibold text-brand transition hover:bg-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold dark:text-white lg:h-auto lg:justify-center lg:border-line lg:bg-surface lg:px-5 lg:py-2.5 lg:text-ink">
+                    <span class="flex size-7 items-center justify-center rounded-md bg-brand lg:hidden">
+                        <x-ui.icon name="users-mobile" :size="16" alt="" />
+                    </span>
+                    <x-ui.icon name="users" :size="18" alt="" class="hidden lg:block" />
+                    <span>Compartidos conmigo</span>
+                </a>
             @endif
         </div>
     </section>

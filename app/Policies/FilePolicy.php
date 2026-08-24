@@ -33,7 +33,7 @@ class FilePolicy
     public function view(User $user, File $file): bool
     {
         return $this->canAccess($user, $file)
-            && $this->can($user, $this->permission($file->visibility, 'ver'));
+            && $this->can($user, $this->permissionFor($user, $file, 'ver'));
     }
 
     public function download(User $user, File $file): bool
@@ -44,7 +44,7 @@ class FilePolicy
                 $file,
                 CollaboratorPermission::Download,
             )
-            && $this->can($user, $this->permission($file->visibility, 'descargar'));
+            && $this->can($user, $this->permissionFor($user, $file, 'descargar'));
     }
 
     public function update(User $user, File $file): bool
@@ -54,7 +54,7 @@ class FilePolicy
             $file,
             CollaboratorPermission::Rename,
         )
-            && $this->can($user, $this->permission($file->visibility, 'renombrar'));
+            && $this->can($user, $this->permissionFor($user, $file, 'renombrar'));
     }
 
     public function move(User $user, File $file, ?Folder $destination = null): bool
@@ -64,7 +64,7 @@ class FilePolicy
             $file,
             CollaboratorPermission::Move,
         )
-            && $this->can($user, $this->permission($file->visibility, 'mover'))
+            && $this->can($user, $this->permissionFor($user, $file, 'mover'))
             && $this->validDestination(
                 $user,
                 $destination,
@@ -83,7 +83,7 @@ class FilePolicy
             $file,
             CollaboratorPermission::Delete,
         )
-            && $this->can($user, $this->permission($file->visibility, 'eliminar'));
+            && $this->can($user, $this->permissionFor($user, $file, 'eliminar'));
     }
 
     public function changeVisibility(
@@ -91,7 +91,9 @@ class FilePolicy
         File $file,
         FileVisibility $visibility,
     ): bool {
-        return $file->visibility !== $visibility
+        return ($file->visibility !== $visibility
+                || ($visibility === FileVisibility::Private
+                    && $file->owner_id === $user->id))
             && $this->canClassify($user, $file)
             && $this->can($user, $this->permission($file->visibility, 'publicar'));
     }
@@ -114,7 +116,7 @@ class FilePolicy
 
     public function viewAdministrative(User $user, File $file): bool
     {
-        return $user->hasRole('superuser');
+        return $this->isAdministrativeOperator($user);
     }
 
     public function downloadAdministrative(User $user, File $file): bool
@@ -155,7 +157,9 @@ class FilePolicy
         }
 
         return match ($file->visibility) {
-            FileVisibility::Private => $file->owner_id === $user->id,
+            FileVisibility::Private => $file->owner_id === $user->id
+                || ($file->collaboration_scope === CollaborationScope::Selected
+                    && $file->collaboratorCan($user, CollaboratorPermission::View)),
             FileVisibility::Collaborative => $this->hasCollaborativeAccess($user, $file),
             FileVisibility::Public => true,
         };
@@ -171,11 +175,16 @@ class FilePolicy
         }
 
         if ($file->visibility === FileVisibility::Collaborative) {
-            return $file->department_id === $user->department_id
-                && ($file->owner_id === $user->id
-                    || $this->isAreaAdmin($user)
-                    || ($file->collaboration_scope === CollaborationScope::Selected
-                        && $file->collaboratorCan($user, $permission)));
+            return ($file->department_id === $user->department_id
+                    && ($file->owner_id === $user->id || $this->isAreaAdmin($user)))
+                || ($file->collaboration_scope === CollaborationScope::Selected
+                    && $file->collaboratorCan($user, $permission));
+        }
+
+        if ($file->visibility === FileVisibility::Private
+            && $file->collaboration_scope === CollaborationScope::Selected
+            && $file->collaboratorCan($user, $permission)) {
+            return true;
         }
 
         if ($file->visibility === FileVisibility::Public
@@ -225,10 +234,10 @@ class FilePolicy
                 || (
                     $allowSharedCollaborative
                     && $folder->visibility === FileVisibility::Collaborative
-                    && $folder->department_id === $user->department_id
                     && (
-                        $this->isAreaAdmin($user)
-                        || $folder->collaboration_scope !== CollaborationScope::Selected
+                        ($folder->department_id === $user->department_id && $this->isAreaAdmin($user))
+                        || ($folder->department_id === $user->department_id
+                            && $folder->collaboration_scope !== CollaborationScope::Selected)
                         || $folder->collaboratorCan(
                             $user,
                             CollaboratorPermission::View,
@@ -262,23 +271,26 @@ class FilePolicy
         File $file,
         CollaboratorPermission $permission,
     ): bool {
+        if ($file->visibility === FileVisibility::Private
+            && $file->collaboration_scope === CollaborationScope::Selected) {
+            return $file->owner_id === $user->id || $file->collaboratorCan($user, $permission);
+        }
+
         if ($file->visibility !== FileVisibility::Collaborative) {
             return true;
         }
 
-        if ($file->department_id !== $user->department_id) {
-            return false;
-        }
-
-        if ($file->owner_id === $user->id || $this->isAreaAdmin($user)) {
+        if ($file->department_id === $user->department_id
+            && ($file->owner_id === $user->id || $this->isAreaAdmin($user))) {
             return true;
         }
 
         if ($file->collaboration_scope !== CollaborationScope::Selected) {
-            return in_array($permission, [
-                CollaboratorPermission::View,
-                CollaboratorPermission::Download,
-            ], true);
+            return $file->department_id === $user->department_id
+                && in_array($permission, [
+                    CollaboratorPermission::View,
+                    CollaboratorPermission::Download,
+                ], true);
         }
 
         return $file->collaboratorCan($user, $permission);
@@ -303,6 +315,17 @@ class FilePolicy
         };
 
         return "{$resource}_{$action}";
+    }
+
+    private function permissionFor(User $user, File $file, string $action): string
+    {
+        if ($file->visibility === FileVisibility::Private
+            && $file->owner_id !== $user->id
+            && $file->collaboration_scope === CollaborationScope::Selected) {
+            return "nube_departamento_{$action}";
+        }
+
+        return $this->permission($file->visibility, $action);
     }
 
     private function can(User $user, string $permission): bool

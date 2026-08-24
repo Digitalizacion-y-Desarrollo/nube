@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\CollaborationScope;
 use App\Enums\FileVisibility;
 use App\Models\File;
 use App\Models\User;
@@ -44,6 +45,11 @@ abstract class FileEventNotification extends Notification
 
     protected function fileUrl(): string
     {
+        if ($this->file->visibility === FileVisibility::Collaborative
+            && $this->file->collaboration_scope === CollaborationScope::Selected) {
+            return route('folders.shared');
+        }
+
         $section = match ($this->file->visibility) {
             FileVisibility::Private => 'mine',
             FileVisibility::Collaborative => 'department',

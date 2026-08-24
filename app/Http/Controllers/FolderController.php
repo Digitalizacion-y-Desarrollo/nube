@@ -77,15 +77,41 @@ class FolderController extends Controller
             folders: $this->folderQuery($folder)->when(
                 $folder === null,
                 fn (Builder $query): Builder => $query
-                    ->where('department_id', $request->user()->department_id)
-                    ->where('visibility', FileVisibility::Collaborative),
+                    ->where('visibility', FileVisibility::Collaborative)
+                    ->where('department_id', $request->user()->department_id),
             ),
             files: $this->fileQuery($folder)->when(
                 $folder === null,
                 fn (Builder $query): Builder => $query
-                    ->where('department_id', $request->user()->department_id)
-                    ->where('visibility', FileVisibility::Collaborative),
+                    ->where('visibility', FileVisibility::Collaborative)
+                    ->where('department_id', $request->user()->department_id),
             ),
+            currentFolder: $folder,
+        );
+    }
+
+    public function shared(BrowseExplorerRequest $request, ?Folder $folder = null): View
+    {
+        if ($folder !== null) {
+            $this->guardFolderForSection($request, $folder, 'shared');
+        }
+
+        $sharedByUser = fn (Builder $query): Builder => $query
+            ->where('collaboration_scope', CollaborationScope::Selected)
+            ->whereHas('collaborators', fn (Builder $users): Builder => $users
+                ->whereKey($request->user()->id));
+
+        return $this->renderSection(
+            request: $request,
+            section: 'shared',
+            title: 'Compartidos conmigo',
+            description: 'Archivos y carpetas que otras personas compartieron directamente contigo.',
+            folders: $folder === null
+                ? Folder::query()->whereNull('parent_id')->where($sharedByUser)
+                : $this->folderQuery($folder),
+            files: $folder === null
+                ? File::query()->where($sharedByUser)
+                : $this->fileQuery($folder),
             currentFolder: $folder,
         );
     }
@@ -145,7 +171,7 @@ class FolderController extends Controller
             ? Folder::query()->findOrFail($validated['parent_id'])
             : null;
         $visibility = FileVisibility::from($validated['visibility']);
-        $collaborationScope = $visibility === FileVisibility::Collaborative
+        $collaborationScope = ($visibility === FileVisibility::Collaborative || $request->boolean('share_privately'))
             ? CollaborationScope::from($validated['collaboration_scope'])
             : null;
 
@@ -170,11 +196,11 @@ class FolderController extends Controller
             ]);
 
             $folder->collaborators()->sync(
-                $visibility === FileVisibility::Collaborative
-                    && $collaborationScope === CollaborationScope::Selected
+                $collaborationScope === CollaborationScope::Selected
                     ? $this->collaboratorPermissions->pivotData(
                         $validated['collaborators'] ?? [],
                         $validated['collaborator_permissions'] ?? [],
+                        $validated['sharing_expires_at'] ?? null,
                     )
                     : [],
             );
@@ -292,7 +318,7 @@ class FolderController extends Controller
         Folder $folder,
     ): RedirectResponse {
         $visibility = FileVisibility::from($request->validated('visibility'));
-        $collaborationScope = $visibility === FileVisibility::Collaborative
+        $collaborationScope = ($visibility === FileVisibility::Collaborative || $request->boolean('share_privately'))
             ? CollaborationScope::from($request->validated('collaboration_scope'))
             : null;
         $oldVisibility = $folder->visibility;
@@ -312,8 +338,7 @@ class FolderController extends Controller
                 'collaboration_scope' => $collaborationScope,
             ]);
 
-            $collaboratorIds = $visibility === FileVisibility::Collaborative
-                && $collaborationScope === CollaborationScope::Selected
+            $collaboratorIds = $collaborationScope === CollaborationScope::Selected
                     ? $request->validated('collaborators', [])
                     : [];
 
@@ -321,6 +346,7 @@ class FolderController extends Controller
                 $this->collaboratorPermissions->pivotData(
                     $collaboratorIds,
                     $request->validated('collaborator_permissions', []),
+                    $request->validated('sharing_expires_at'),
                 ),
             );
 
@@ -376,6 +402,7 @@ class FolderController extends Controller
                 || ($currentFolder === null && in_array($section, ['mine', 'public'], true))
                 || ($currentFolder === null
                     && $section === 'department'
+                    && $folder->department_id === $request->user()->department_id
                     && $folder->collaboration_scope !== CollaborationScope::Selected)
                 || $request->user()->can('view', $folder))
             ->map(fn (Folder $folder): array => $this->folderItem(
@@ -396,6 +423,7 @@ class FolderController extends Controller
                 || ($currentFolder === null && in_array($section, ['mine', 'public'], true))
                 || ($currentFolder === null
                     && $section === 'department'
+                    && $file->department_id === $request->user()->department_id
                     && $file->collaboration_scope !== CollaborationScope::Selected)
                 || $request->user()->can('view', $file))
             ->map(fn (File $file): array => $this->fileItem(
@@ -438,7 +466,14 @@ class FolderController extends Controller
                     ->orWhere(function (Builder $collaborative) use ($request): void {
                         $collaborative
                             ->where('visibility', FileVisibility::Collaborative)
-                            ->where('department_id', $request->user()->department_id);
+                            ->where(function (Builder $visible) use ($request): void {
+                                $visible->where('department_id', $request->user()->department_id)
+                                    ->orWhere(function (Builder $selected) use ($request): void {
+                                        $selected->where('collaboration_scope', CollaborationScope::Selected)
+                                            ->whereHas('collaborators', fn (Builder $users): Builder => $users
+                                                ->whereKey($request->user()->id));
+                                    });
+                            });
                     });
             })
             ->orderBy('path_cache')
@@ -499,7 +534,7 @@ class FolderController extends Controller
         ) || $fileItems->contains(
             fn (array $item): bool => collect($item['visibility_options'])
                 ->contains('value', FileVisibility::Collaborative->value),
-        );
+        ) || ($section === 'mine' && ($folderVisibilityOptions->isNotEmpty() || $uploadVisibilityOptions->isNotEmpty()));
 
         if ($section !== 'trash' && $needsDepartmentUsers) {
             $token = $request->session()->get('access.token');
@@ -537,16 +572,17 @@ class FolderController extends Controller
         )
             ? $defaultSectionVisibility
             : $folderVisibilityOptions->first()['value'] ?? $defaultSectionVisibility;
-        $defaultUploadCollaborationScope = $currentFolder?->visibility
-            === FileVisibility::Collaborative
+        $defaultUploadCollaborationScope = $currentFolder?->collaboration_scope
+            === CollaborationScope::Selected
+                ? CollaborationScope::Selected->value
+                : ($currentFolder?->visibility === FileVisibility::Collaborative
                 ? $currentFolder->collaboration_scope?->value
                     ?? CollaborationScope::Department->value
-                : CollaborationScope::Department->value;
+                : CollaborationScope::Department->value);
         $defaultUploadCollaborators = [];
         $defaultUploadCollaboratorPermissions = [];
 
-        if ($currentFolder?->visibility === FileVisibility::Collaborative
-            && $currentFolder->collaboration_scope === CollaborationScope::Selected) {
+        if ($currentFolder?->collaboration_scope === CollaborationScope::Selected) {
             $currentFolder->loadMissing('collaborators:id');
             $defaultUploadCollaborators = $currentFolder->collaborators
                 ->pluck('id')
@@ -746,12 +782,18 @@ class FolderController extends Controller
             'size_bytes' => 0,
             'size' => null,
             'visibility' => $folder->visibility->value,
+            'is_private_shared' => $folder->visibility === FileVisibility::Private
+                && $folder->collaboration_scope === CollaborationScope::Selected,
             'visibility_label' => $folder->visibility->label(),
             'sharing_label' => $this->sharingLabel(
                 $folder->visibility,
                 $folder->collaboration_scope,
                 $folder->collaborators->count(),
             ),
+            'collaborators_label' => $folder->collaborators
+                ->map(fn (User $user): string => trim("{$user->name} {$user->last_name}"))
+                ->filter()
+                ->join(', '),
             'url' => $trashed ? null : $this->sectionRoute($section, $folder),
             'parent_id' => $folder->parent_id,
             'can_rename' => ! $trashed && $request->user()->can('update', $folder),
@@ -815,12 +857,18 @@ class FolderController extends Controller
             'size_bytes' => $file->size_bytes,
             'size' => $this->formatBytes($file->size_bytes),
             'visibility' => $file->visibility->value,
+            'is_private_shared' => $file->visibility === FileVisibility::Private
+                && $file->collaboration_scope === CollaborationScope::Selected,
             'visibility_label' => $file->visibility->label(),
             'sharing_label' => $this->sharingLabel(
                 $file->visibility,
                 $file->collaboration_scope,
                 $file->collaborators->count(),
             ),
+            'collaborators_label' => $file->collaborators
+                ->map(fn (User $user): string => trim("{$user->name} {$user->last_name}"))
+                ->filter()
+                ->join(', '),
             'url' => null,
             'folder_id' => $file->folder_id,
             'can_download' => ! $trashed && $request->user()->can('download', $file),
@@ -869,6 +917,9 @@ class FolderController extends Controller
             'public' => $folder === null
                 ? route('folders.public')
                 : route('folders.public.show', $folder),
+            'shared' => $folder === null
+                ? route('folders.shared')
+                : route('folders.shared.show', $folder),
             default => route('folders.trash'),
         };
     }
@@ -956,7 +1007,9 @@ class FolderController extends Controller
         int $collaboratorCount,
     ): string {
         return match ($visibility) {
-            FileVisibility::Private => 'Solo el propietario',
+            FileVisibility::Private => $scope === CollaborationScope::Selected
+                ? "Privado · {$collaboratorCount} persona(s) seleccionada(s)"
+                : 'Solo el propietario',
             FileVisibility::Public => 'Todas las personas con acceso',
             FileVisibility::Collaborative => $scope === CollaborationScope::Selected
                 ? "{$collaboratorCount} persona(s) seleccionada(s)"

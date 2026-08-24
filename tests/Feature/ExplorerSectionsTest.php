@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CollaborationScope;
 use App\Enums\FileVisibility;
 use App\Models\Department;
 use App\Models\File;
 use App\Models\Folder;
+use App\Models\Permission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -92,6 +94,51 @@ class ExplorerSectionsTest extends TestCase
             ->assertDontSee('Documento privado.pdf');
     }
 
+    public function test_shared_section_only_shows_resources_explicitly_shared_with_the_user(): void
+    {
+        $department = Department::factory()->create();
+        $otherDepartment = Department::factory()->create();
+        $user = User::factory()->create(['department_id' => $department->id]);
+        $owner = User::factory()->create(['department_id' => $otherDepartment->id]);
+        $otherRecipient = User::factory()->create(['department_id' => $department->id]);
+        $shared = File::factory()->create([
+            'owner_id' => $owner->id,
+            'department_id' => $otherDepartment->id,
+            'display_name' => 'Compartido directamente.pdf',
+            'visibility' => FileVisibility::Collaborative,
+            'collaboration_scope' => CollaborationScope::Selected,
+        ]);
+        $notShared = File::factory()->create([
+            'owner_id' => $owner->id,
+            'department_id' => $otherDepartment->id,
+            'display_name' => 'Compartido con otra persona.pdf',
+            'visibility' => FileVisibility::Collaborative,
+            'collaboration_scope' => CollaborationScope::Selected,
+        ]);
+        $shared->collaborators()->attach($user->id, [
+            'can_view' => true,
+            'can_download' => true,
+            'can_rename' => false,
+            'can_move' => false,
+            'can_delete' => false,
+            'created_at' => now(),
+        ]);
+        $notShared->collaborators()->attach($otherRecipient->id, [
+            'can_view' => true,
+            'can_download' => true,
+            'can_rename' => false,
+            'can_move' => false,
+            'can_delete' => false,
+            'created_at' => now(),
+        ]);
+
+        $this->authenticated($user, ['nube_departamento_ver'])
+            ->get(route('folders.shared'))
+            ->assertOk()
+            ->assertSee('Compartido directamente.pdf')
+            ->assertDontSee('Compartido con otra persona.pdf');
+    }
+
     public function test_trash_only_shows_the_authenticated_users_deleted_content(): void
     {
         $user = User::factory()->create();
@@ -139,6 +186,19 @@ class ExplorerSectionsTest extends TestCase
      */
     private function authenticated(User $user, array $permissions = []): static
     {
+        foreach ($permissions as $permissionName) {
+            $permission = Permission::query()->firstOrCreate(
+                ['name' => $permissionName],
+                ['display_name' => $permissionName],
+            );
+
+            $user->permissions()->syncWithoutDetaching([
+                $permission->id => ['created_at' => now()],
+            ]);
+        }
+
+        $user->unsetRelation('permissions');
+
         return $this->actingAs($user)->withSession([
             'access.token' => 'test-token',
             'access.permissions' => array_merge(['nube_inicio_ver'], $permissions),

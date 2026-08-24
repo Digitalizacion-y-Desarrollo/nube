@@ -297,6 +297,9 @@
                         <label class="block">
                             <span class="mb-1.5 block text-[13px] font-semibold text-muted">Nueva clasificación</span>
                             <select name="visibility" data-sharing-visibility required class="h-[46px] w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
+                                @if ($folderItem['visibility'] === 'private')
+                                    <option value="private" @selected(old('folder_context') === $folderItem['id'] && old('visibility', 'private') === 'private')>Privado</option>
+                                @endif
                                 <option
                                     value=""
                                     disabled
@@ -316,6 +319,7 @@
                             'contextId' => $folderItem['id'],
                             'contextField' => 'folder_context',
                             'pickerId' => 'folder-visibility-collaborators-'.$folderItem['id'],
+                            'defaultPrivateSharing' => $folderItem['is_private_shared'],
                             'errorBag' => $errors->getBag('changeFolderVisibility'),
                         ])
 
@@ -428,6 +432,9 @@
                         <label class="block">
                             <span class="mb-1.5 block text-[13px] font-semibold text-muted">Nueva clasificación</span>
                             <select name="visibility" data-sharing-visibility required class="h-[46px] w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
+                                @if ($fileItem['visibility'] === 'private')
+                                    <option value="private" @selected(old('file_context') === $fileItem['id'] && old('visibility', 'private') === 'private')>Privado</option>
+                                @endif
                                 <option
                                     value=""
                                     disabled
@@ -446,6 +453,7 @@
                         @include('folders.partials.collaboration-fields', [
                             'contextId' => $fileItem['id'],
                             'pickerId' => 'file-visibility-collaborators-'.$fileItem['id'],
+                            'defaultPrivateSharing' => $fileItem['is_private_shared'],
                             'errorBag' => $errors->getBag('changeVisibility'),
                         ])
 
@@ -751,6 +759,8 @@
                         Crea una carpeta para comenzar a organizar tus archivos privados.
                     @elseif ($section === 'department')
                         El contenido colaborativo de tu departamento aparecerá en esta ubicación.
+                    @elseif ($section === 'shared')
+                        Los archivos y carpetas que otras personas compartan directamente contigo aparecerán aquí.
                     @elseif ($section === 'public')
                         Los archivos publicados para toda la organización aparecerán aquí.
                     @else
@@ -804,6 +814,9 @@
                                     {{ $item['visibility_label'] }}
                                 </span>
                                 <span class="mt-1 block text-[11px] text-muted">{{ $item['sharing_label'] }}</span>
+                                @if ($item['collaborators_label'])
+                                    <span class="mt-1 block truncate text-[11px] text-muted" title="{{ $item['collaborators_label'] }}">Compartido con: {{ $item['collaborators_label'] }}</span>
+                                @endif
                             @endif
                             @if ($item['purge_label'])
                                 <span class="mt-1 block text-xs font-semibold text-red-700" title="{{ $item['purge_at'] }}">
@@ -905,6 +918,9 @@
                                             {{ $item['visibility_label'] }}
                                         </span>
                                         <span class="mt-1 block text-[11px]">{{ $item['sharing_label'] }}</span>
+                                        @if ($item['collaborators_label'])
+                                            <span class="mt-1 block truncate text-[11px]" title="{{ $item['collaborators_label'] }}">Compartido con: {{ $item['collaborators_label'] }}</span>
+                                        @endif
                                     @endif
                                 </td>
                                 <td class="truncate px-5 py-3 text-muted">{{ $item['owner'] ?: 'Sin propietario' }}</td>

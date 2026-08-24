@@ -19,6 +19,27 @@ class AdminSecurityPoliciesTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_administrative_views_require_both_the_superuser_role_and_permission(): void
+    {
+        $superuser = $this->superuser();
+
+        $this->authenticated($superuser)
+            ->get(route('admin.dashboard'))
+            ->assertForbidden();
+
+        $this->authenticated($superuser, ['nube_administracion_resumen_ver'])
+            ->get(route('admin.dashboard'))
+            ->assertOk();
+
+        $this->authenticated($superuser, ['nube_administracion_archivos_ver'])
+            ->get(route('admin.dashboard'))
+            ->assertForbidden();
+
+        $this->authenticated($superuser, ['nube_administracion_archivos_ver'])
+            ->get(route('admin.files'))
+            ->assertOk();
+    }
+
     public function test_administrative_write_routes_require_both_the_role_and_the_permission(): void
     {
         Storage::fake('nube');

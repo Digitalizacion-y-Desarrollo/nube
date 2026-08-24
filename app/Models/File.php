@@ -72,6 +72,7 @@ class File extends Model
                 'can_move',
                 'can_delete',
                 'created_at',
+                'expires_at',
             ]);
     }
 

@@ -46,8 +46,9 @@ trabajo.
 - Nunca almacenar contraseñas.
 - Guardar el token Bearer únicamente en la sesión del servidor.
 - Implementar login, consulta de usuario, logout y recuperación mediante el API.
-- Consultar `GET /api/integrations/users` para seleccionar colaboradores,
-  filtrando por el departamento del usuario autenticado.
+- Consultar `GET /api/integrations/users` para refrescar los colaboradores del
+  departamento actual y complementar la selección con personas activas de otros
+  departamentos ya sincronizadas localmente.
 - Sincronizar en cada login el usuario autenticado, su departamento, roles y
   permisos.
 - Verificar el permiso `nube_inicio_ver`.
@@ -62,8 +63,9 @@ definido en la Fase 3 de `Plan_de_Desarrollo_por_Fases_Nube_Municipal.md`.
 - Los roles son informativos y no sustituyen permisos funcionales. Las
   excepciones son: `admin_area`, que limita el alcance administrativo de
   contenido colaborativo del propio departamento y siempre requiere el permiso
-  de la acción; y `superuser`, que habilita exclusivamente el acceso al
-  panel administrativo de consulta bajo `/admin`.
+  de la acción; y `superuser`, que identifica el perfil administrativo. El
+  cada vista de `/admin` requiere su permiso efectivo de consulta; las
+  operaciones globales requieren además `nube_administracion_administrar`.
 - Autorizar las operaciones funcionales exclusivamente con los permisos
   efectivos del usuario; el rol `superuser` no concede por sí solo acciones
   sobre archivos o carpetas.
@@ -171,7 +173,8 @@ entradas. La ubicación física nunca sustituye la autorización.
 - Carpetas privadas solo pueden ser modificadas por su propietario.
 - La visibilidad de carpetas, subcarpetas y archivos es independiente.
 - Los recursos colaborativos admiten acceso para todo el departamento o para
-  una selección de personas activas del mismo departamento.
+  una selección explícita de personas activas, incluso de otros departamentos.
+  El alcance de todo el departamento nunca se extiende fuera del área propietaria.
 - Las carpetas compartidas transmiten a los archivos nuevos su selección de
   colaboradores y la matriz interna de permisos, salvo que el propietario la
   sobrescriba durante la carga.
@@ -201,6 +204,7 @@ Secciones principales:
 
 - Mis archivos.
 - Mi departamento.
+- Compartidos conmigo.
 - Públicos.
 - Papelera.
 
@@ -259,7 +263,6 @@ críticos. Cubrir como mínimo:
 
 No implementar salvo solicitud explícita de ampliación de alcance:
 
-- Compartición con personas de otros departamentos.
 - Historial de versiones.
 - Vista previa avanzada o miniaturas.
 - Antivirus.

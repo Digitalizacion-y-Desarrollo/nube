@@ -37,7 +37,13 @@ class ChangeFolderVisibilityRequest extends FormRequest
             'visibility' => [
                 'required',
                 Rule::enum(FileVisibility::class),
-                Rule::notIn([$this->route('folder')?->visibility?->value]),
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $folder = $this->route('folder');
+                    if ($folder instanceof Folder && $value === $folder->visibility?->value
+                        && ! ($value === FileVisibility::Private->value && $this->boolean('share_privately'))) {
+                        $fail('Selecciona una clasificación diferente o activa el uso compartido privado.');
+                    }
+                },
             ],
             ...$this->collaborationRules(),
         ];
