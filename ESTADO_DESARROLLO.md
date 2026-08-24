@@ -5,7 +5,7 @@ final de cada sesión de trabajo y consultarse antes de iniciar una nueva.
 
 ## Última actualización
 
-- Fecha: 13 de agosto de 2026.
+- Fecha: 24 de agosto de 2026.
 - Estado general: Épicos 01 a 08 y 11 a 19 implementados y en Revisión y QA;
   Épico 20 con su parte automatizada y documental completada; Épico 09 en
   Terminado y Épico 10 en Backlog.
@@ -200,6 +200,14 @@ final de cada sesión de trabajo y consultarse antes de iniciar una nueva.
   papelera, vencimiento, purga y auditoría automática.
 
 ### Épico 06 — Archivos colaborativos y públicos
+
+- Compartición selectiva interdepartamental implementada: personas activas de
+  otras áreas pueden recibir permisos internos explícitos por archivo o carpeta;
+  el alcance “Todo mi departamento” permanece limitado al departamento dueño.
+- El explorador, dashboard y búsqueda global incluyen únicamente los recursos
+  interdepartamentales compartidos explícitamente con la persona autenticada.
+- Vista “Compartidos conmigo” implementada para separar los recursos otorgados
+  explícitamente de los archivos colaborativos del propio departamento.
 
 - Carga directa con clasificación privada, colaborativa o pública y selector
   dinámico en el modal.
@@ -876,6 +884,20 @@ Las migraciones `2026_08_13_000001_add_deleted_by_to_files_and_folders` y
 `2026_08_13_000002_add_avatar_path_to_users_table` ya fueron aplicadas en la base
 local; cualquier otro entorno debe ejecutar `php artisan migrate` antes de abrir
 la papelera global o el perfil de usuario.
+
+La migración `2026_08_24_000001_add_expiration_to_collaborator_pivots` agrega
+`expires_at` a los colaboradores de archivos y carpetas. El uso compartido
+seleccionado puede mantenerse privado: el propietario lo conserva en **Mis
+archivos**, las personas invitadas lo ven en **Compartidos conmigo**, y el acceso
+vence automáticamente cuando corresponde. Antes de desplegar esta función se debe
+ejecutar `php artisan migrate`.
+
+Las vistas administrativas usan permisos independientes: `nube_administracion_resumen_ver`,
+`nube_administracion_archivos_ver`, `nube_administracion_departamentos_ver`,
+`nube_administracion_usuarios_ver`, `nube_administracion_papelera_ver`,
+`nube_administracion_auditoria_ver` y `nube_administracion_configuracion_ver`.
+El rol `superuser` sigue siendo obligatorio; `nube_administracion_administrar`
+mantiene el acceso global para operaciones y consulta asociada.
 
 Antes de comenzar, revisar también `AGENT.md`,
 `Plan_de_Desarrollo_por_Fases_Nube_Municipal.md`,

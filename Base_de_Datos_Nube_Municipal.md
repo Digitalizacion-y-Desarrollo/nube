@@ -310,7 +310,8 @@ departments 1 --- N files
 ### 3.8.1. Colaboradores seleccionados
 
 `folder_collaborators` y `file_collaborators` relacionan recursos colaborativos
-con personas activas del mismo departamento.
+con personas activas. Cuando el alcance es `selected`, las personas pueden
+pertenecer a otros departamentos; esto no concede acceso a sus áreas completas.
 
 ```text
 folder_collaborators.folder_id -> folders.id
@@ -321,8 +322,8 @@ file_collaborators.user_id -> users.id
 
 Cada tabla utiliza una llave primaria compuesta por el recurso y el usuario.
 Las relaciones solo se consultan cuando `collaboration_scope` es `selected`;
-con `department`, todas las personas autorizadas del departamento tienen
-acceso.
+con `department`, todas las personas autorizadas del departamento propietario
+tienen acceso.
 
 Ambas tablas conservan permisos internos por colaborador. Estos permisos no
 forman parte del catálogo del API de accesos:

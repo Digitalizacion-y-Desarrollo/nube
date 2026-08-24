@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CollaborationScope;
 use App\Enums\FileVisibility;
 use App\Models\AuditLog;
 use App\Models\File;
@@ -38,6 +39,11 @@ class DashboardController extends Controller
                                 ->where('visibility', FileVisibility::Collaborative)
                                 ->where('department_id', $departmentId),
                         ),
+                    )
+                    ->orWhere(
+                        fn ($selected) => $selected
+                            ->where('collaboration_scope', CollaborationScope::Selected)
+                            ->whereHas('collaborators', fn ($users) => $users->whereKey($authenticatedUser->id)),
                     );
             })
             ->latest('uploaded_at')
@@ -57,6 +63,11 @@ class DashboardController extends Controller
                                 ->where('visibility', FileVisibility::Collaborative)
                                 ->where('department_id', $departmentId),
                         ),
+                    )
+                    ->orWhere(
+                        fn ($selected) => $selected
+                            ->where('collaboration_scope', CollaborationScope::Selected)
+                            ->whereHas('collaborators', fn ($users) => $users->whereKey($authenticatedUser->id)),
                     );
             })
             ->latest('updated_at')
@@ -137,11 +148,14 @@ class DashboardController extends Controller
      */
     private function fileData(User $user, File $file): array
     {
-        $location = match ($file->visibility) {
-            FileVisibility::Private => 'Mis archivos',
-            FileVisibility::Collaborative => 'Mi departamento',
-            FileVisibility::Public => 'Públicos',
-        };
+        $location = $file->collaboration_scope === CollaborationScope::Selected
+            && $file->collaborators->contains('id', $user->id)
+                ? 'Compartidos conmigo'
+                : match ($file->visibility) {
+                    FileVisibility::Private => 'Mis archivos',
+                    FileVisibility::Collaborative => 'Mi departamento',
+                    FileVisibility::Public => 'Públicos',
+                };
 
         if ($file->folder) {
             $location .= $file->folder->path_cache ?: "/{$file->folder->name}";
@@ -166,6 +180,15 @@ class DashboardController extends Controller
      */
     private function folderData(Folder $folder): array
     {
+        if ($folder->collaboration_scope === CollaborationScope::Selected) {
+            return [
+                'name' => $folder->name,
+                'location' => 'Compartidos conmigo',
+                'time' => $folder->updated_at?->diffForHumans() ?? 'Sin fecha',
+                'url' => route('folders.shared.show', $folder),
+            ];
+        }
+
         $section = match ($folder->visibility) {
             FileVisibility::Private => 'mine',
             FileVisibility::Collaborative => 'department',

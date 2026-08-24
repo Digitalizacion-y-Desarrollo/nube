@@ -40,6 +40,14 @@ class DemoPermissionSeeder extends Seeder
         'nube_publicos_eliminar' => 'Eliminar archivos públicos internos',
         'nube_publicos_publicar' => 'Cambiar visibilidad de archivos públicos internos',
         'nube_papelera_ver' => 'Ver la papelera',
+        'nube_administracion_resumen_ver' => 'Ver resumen administrativo',
+        'nube_administracion_archivos_ver' => 'Ver archivos administrativos',
+        'nube_administracion_departamentos_ver' => 'Ver departamentos administrativos',
+        'nube_administracion_usuarios_ver' => 'Ver usuarios administrativos',
+        'nube_administracion_papelera_ver' => 'Ver papelera global administrativa',
+        'nube_administracion_auditoria_ver' => 'Ver auditoría administrativa',
+        'nube_administracion_configuracion_ver' => 'Ver configuración administrativa',
+        'nube_administracion_administrar' => 'Administrar recursos globales',
     ];
 
     public function run(): void

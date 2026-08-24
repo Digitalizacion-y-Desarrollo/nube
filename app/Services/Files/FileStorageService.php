@@ -38,6 +38,7 @@ class FileStorageService
         array $collaboratorIds = [],
         array $permissionsByUser = [],
         ?string $displayName = null,
+        ?string $expiresAt = null,
     ): File {
         $extension = strtolower($upload->getClientOriginalExtension());
         $storedName = Str::uuid()->toString().($extension === '' ? '' : ".{$extension}");
@@ -68,6 +69,7 @@ class FileStorageService
                 $permissionsByUser,
                 $departmentId,
                 $displayName,
+                $expiresAt,
             ): File {
                 $safeOriginalName = $this->safeOriginalName($upload);
 
@@ -84,19 +86,21 @@ class FileStorageService
                     'mime_type' => $upload->getMimeType(),
                     'size_bytes' => $upload->getSize(),
                     'visibility' => $visibility,
-                    'collaboration_scope' => $visibility === FileVisibility::Collaborative
+                    'collaboration_scope' => $collaborationScope === CollaborationScope::Selected
+                        ? CollaborationScope::Selected
+                        : ($visibility === FileVisibility::Collaborative
                         ? ($collaborationScope ?? CollaborationScope::Department)
-                        : null,
+                        : null),
                     'checksum' => hash_file('sha256', $upload->getRealPath()) ?: null,
                     'uploaded_at' => now(),
                 ]);
 
                 $file->collaborators()->sync(
-                    $visibility === FileVisibility::Collaborative
-                        && $collaborationScope === CollaborationScope::Selected
+                    $collaborationScope === CollaborationScope::Selected
                             ? $this->collaboratorPermissions->pivotData(
                                 $collaboratorIds,
                                 $permissionsByUser,
+                                $expiresAt,
                             )
                             : [],
                 );
@@ -216,6 +220,7 @@ class FileStorageService
         ?CollaborationScope $collaborationScope = null,
         array $collaboratorIds = [],
         array $permissionsByUser = [],
+        ?string $expiresAt = null,
     ): File {
         $previousCollaboratorIds = $file->collaboration_scope === CollaborationScope::Selected
             ? $file->collaborators()->pluck('id')->all()
@@ -244,23 +249,26 @@ class FileStorageService
                 $collaborationScope,
                 $collaboratorIds,
                 $permissionsByUser,
+                $expiresAt,
                 $sameVisibility,
             ): File {
                 $file->update([
                     'folder_id' => $sameVisibility ? $file->folder_id : null,
                     'visibility' => $visibility,
-                    'collaboration_scope' => $visibility === FileVisibility::Collaborative
+                    'collaboration_scope' => $collaborationScope === CollaborationScope::Selected
+                        ? CollaborationScope::Selected
+                        : ($visibility === FileVisibility::Collaborative
                         ? ($collaborationScope ?? CollaborationScope::Department)
-                        : null,
+                        : null),
                     'path' => $newPath,
                 ]);
 
                 $file->collaborators()->sync(
-                    $visibility === FileVisibility::Collaborative
-                        && $collaborationScope === CollaborationScope::Selected
+                    $collaborationScope === CollaborationScope::Selected
                             ? $this->collaboratorPermissions->pivotData(
                                 $collaboratorIds,
                                 $permissionsByUser,
+                                $expiresAt,
                             )
                             : [],
                 );
@@ -275,7 +283,7 @@ class FileStorageService
             throw $exception;
         }
 
-        if ($visibility === FileVisibility::Collaborative && $collaborationScope === CollaborationScope::Selected) {
+        if ($collaborationScope === CollaborationScope::Selected) {
             $newCollaboratorIds = array_values(array_diff($collaboratorIds, $previousCollaboratorIds));
             $this->notifySharedCollaborators($updatedFile, $newCollaboratorIds);
         }

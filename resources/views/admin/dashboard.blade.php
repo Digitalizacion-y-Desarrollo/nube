@@ -204,7 +204,7 @@
                 <div class="flex items-start gap-3">
                     <x-ui.icon name="shield" :size="22" alt="" />
                     <div>
-                        <h2 class="text-sm font-bold">Acceso por rol</h2>
+                        <h2 class="text-sm font-bold">Acceso administrativo</h2>
                         <p class="mt-1 text-xs leading-5 text-muted">
                             Este panel está reservado al rol <strong class="text-ink">superuser</strong>. Las operaciones sobre archivos continúan sujetas a permisos y Policies.
                         </p>

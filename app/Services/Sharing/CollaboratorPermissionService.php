@@ -15,14 +15,15 @@ class CollaboratorPermissionService
     public function pivotData(
         array $collaboratorIds,
         array $permissionsByUser = [],
+        ?string $expiresAt = null,
     ): array {
         return collect($collaboratorIds)
-            ->mapWithKeys(function (int $userId) use ($permissionsByUser): array {
+            ->mapWithKeys(function (int $userId) use ($permissionsByUser, $expiresAt): array {
                 $assigned = $permissionsByUser[$userId]
                     ?? $permissionsByUser[(string) $userId]
                     ?? CollaboratorPermission::defaults();
 
-                return [$userId => $this->attributes($assigned)];
+                return [$userId => $this->attributes($assigned, $expiresAt)];
             })
             ->all();
     }
@@ -31,10 +32,10 @@ class CollaboratorPermissionService
      * @param  list<string>  $assigned
      * @return array<string, bool|Carbon>
      */
-    private function attributes(array $assigned): array
+    private function attributes(array $assigned, ?string $expiresAt = null): array
     {
         $assigned = array_values(array_unique($assigned));
-        $attributes = ['created_at' => now()];
+        $attributes = ['created_at' => now(), 'expires_at' => $expiresAt];
 
         foreach (CollaboratorPermission::cases() as $permission) {
             $attributes[$permission->pivotColumn()] = in_array(

@@ -749,12 +749,28 @@ document.querySelectorAll('[data-sharing-form]').forEach((form) => {
     const collaborationOptions = form.querySelector('[data-collaboration-options]');
     const collaborationScope = form.querySelector('[data-collaboration-scope]');
     const selectedCollaborators = form.querySelector('[data-selected-collaborators]');
+    const sharingDuration = form.querySelector('[data-sharing-duration]');
+    const sharingExpiresAt = form.querySelector('[data-sharing-expires-at]');
+    const privateSharingToggle = form.querySelector('[data-private-sharing-toggle]');
+    const sharePrivately = form.querySelector('[data-share-privately]');
+    const privateAccess = form.querySelector('[data-private-access]');
+    const scopeControl = form.querySelector('[data-collaboration-scope-control]');
 
     const syncSharingControls = () => {
         const isCollaborative = visibility?.value === 'collaborative';
-        const isSelected = isCollaborative && collaborationScope?.value === 'selected';
+        const isPrivate = visibility?.value === 'private';
+        const isPrivateShared = isPrivate && privateAccess?.value === 'selected';
+        if (sharePrivately) {
+            sharePrivately.checked = isPrivateShared;
+        }
+        const isSelected = isPrivateShared || (isCollaborative && collaborationScope?.value === 'selected');
 
-        collaborationOptions?.classList.toggle('hidden', !isCollaborative);
+        privateSharingToggle?.classList.toggle('hidden', !isPrivate);
+        scopeControl?.classList.toggle('hidden', isPrivate);
+        collaborationOptions?.classList.toggle('hidden', !(isCollaborative || isPrivateShared));
+        if (isPrivateShared && collaborationScope) {
+            collaborationScope.value = 'selected';
+        }
         selectedCollaborators?.classList.toggle('hidden', !isSelected);
 
         collaborationOptions?.querySelectorAll('select, input').forEach((input) => {
@@ -763,7 +779,7 @@ document.querySelectorAll('[data-sharing-form]').forEach((form) => {
                 ?.querySelector('[data-collaborator-checkbox]')?.checked === true;
             const isPermissionInput = input.matches('[data-collaborator-permission-input]');
 
-            input.disabled = !isCollaborative
+            input.disabled = !(isCollaborative || isPrivateShared)
                 || (input.type === 'checkbox' && !isSelected)
                 || (isPermissionInput && (!isSelected || !collaboratorSelected));
         });
@@ -773,10 +789,19 @@ document.querySelectorAll('[data-sharing-form]').forEach((form) => {
             selectedCollaborators?.querySelector('[data-collaborator-search]')
                 ?.setAttribute('aria-expanded', 'false');
         }
+
+        const isLimited = isSelected && sharingDuration?.value === 'limited';
+        sharingExpiresAt?.classList.toggle('hidden', !isLimited);
+        if (sharingExpiresAt) {
+            sharingExpiresAt.disabled = !isLimited;
+            sharingExpiresAt.required = isLimited;
+        }
     };
 
     visibility?.addEventListener('change', syncSharingControls);
     collaborationScope?.addEventListener('change', syncSharingControls);
+    sharingDuration?.addEventListener('change', syncSharingControls);
+    privateAccess?.addEventListener('change', syncSharingControls);
     syncSharingControls();
 });
 

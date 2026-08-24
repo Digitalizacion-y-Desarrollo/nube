@@ -17,8 +17,10 @@ class FolderPolicy
         }
 
         return match ($folder->visibility) {
-            FileVisibility::Private => $folder->owner_id === $user->id
-                && $this->can($user, 'nube_mis_archivos_ver'),
+            FileVisibility::Private => ($folder->owner_id === $user->id
+                    || ($folder->collaboration_scope === CollaborationScope::Selected
+                        && $folder->collaboratorCan($user, CollaboratorPermission::View)))
+                && $this->can($user, $this->permissionFor($user, $folder, 'ver')),
             FileVisibility::Collaborative => $this->hasCollaborativeAccess($user, $folder)
                 && $this->can($user, 'nube_departamento_ver'),
             FileVisibility::Public => $this->can($user, 'nube_publicos_ver'),
@@ -50,7 +52,7 @@ class FolderPolicy
 
     public function update(User $user, Folder $folder): bool
     {
-        return $this->can($user, $this->permission($folder->visibility, 'renombrar'))
+        return $this->can($user, $this->permissionFor($user, $folder, 'renombrar'))
             && $this->canManage(
                 $user,
                 $folder,
@@ -60,7 +62,7 @@ class FolderPolicy
 
     public function delete(User $user, Folder $folder): bool
     {
-        return $this->can($user, $this->permission($folder->visibility, 'eliminar'))
+        return $this->can($user, $this->permissionFor($user, $folder, 'eliminar'))
             && $this->canManage(
                 $user,
                 $folder,
@@ -73,7 +75,7 @@ class FolderPolicy
         Folder $folder,
         ?Folder $destination = null,
     ): bool {
-        if (! $this->can($user, $this->permission($folder->visibility, 'mover'))
+        if (! $this->can($user, $this->permissionFor($user, $folder, 'mover'))
             || ! $this->canManage($user, $folder, CollaboratorPermission::Move)) {
             return false;
         }
@@ -94,14 +96,16 @@ class FolderPolicy
         Folder $folder,
         FileVisibility $visibility,
     ): bool {
-        return $folder->visibility !== $visibility
+        return ($folder->visibility !== $visibility
+                || ($visibility === FileVisibility::Private
+                    && $folder->owner_id === $user->id))
             && $this->canClassify($user, $folder)
             && $this->can($user, $this->permission($folder->visibility, 'publicar'));
     }
 
     public function viewAdministrative(User $user, Folder $folder): bool
     {
-        return $user->hasRole('superuser');
+        return $this->isAdministrativeOperator($user);
     }
 
     public function restoreAdministrative(User $user, Folder $folder): bool
@@ -124,11 +128,16 @@ class FolderPolicy
         }
 
         if ($folder->visibility === FileVisibility::Collaborative) {
-            return $folder->department_id === $user->department_id
-                && ($folder->owner_id === $user->id
-                    || $this->isAreaAdmin($user)
-                    || ($folder->collaboration_scope === CollaborationScope::Selected
-                        && $folder->collaboratorCan($user, $permission)));
+            return ($folder->department_id === $user->department_id
+                    && ($folder->owner_id === $user->id || $this->isAreaAdmin($user)))
+                || ($folder->collaboration_scope === CollaborationScope::Selected
+                    && $folder->collaboratorCan($user, $permission));
+        }
+
+        if ($folder->visibility === FileVisibility::Private
+            && $folder->collaboration_scope === CollaborationScope::Selected
+            && $folder->collaboratorCan($user, $permission)) {
+            return true;
         }
 
         if ($folder->visibility === FileVisibility::Public
@@ -160,16 +169,13 @@ class FolderPolicy
 
     private function hasCollaborativeAccess(User $user, Folder $folder): bool
     {
-        if ($folder->department_id !== $user->department_id) {
-            return false;
-        }
-
-        if ($folder->owner_id === $user->id || $this->isAreaAdmin($user)) {
+        if ($folder->department_id === $user->department_id
+            && ($folder->owner_id === $user->id || $this->isAreaAdmin($user))) {
             return true;
         }
 
         if ($folder->collaboration_scope !== CollaborationScope::Selected) {
-            return true;
+            return $folder->department_id === $user->department_id;
         }
 
         return $folder->collaboratorCan(
@@ -208,6 +214,17 @@ class FolderPolicy
         };
 
         return "{$resource}_{$action}";
+    }
+
+    private function permissionFor(User $user, Folder $folder, string $action): string
+    {
+        if ($folder->visibility === FileVisibility::Private
+            && $folder->owner_id !== $user->id
+            && $folder->collaboration_scope === CollaborationScope::Selected) {
+            return "nube_departamento_{$action}";
+        }
+
+        return $this->permission($folder->visibility, $action);
     }
 
     private function can(User $user, string $permission): bool

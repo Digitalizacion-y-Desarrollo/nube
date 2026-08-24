@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CollaborationScope;
 use App\Enums\FileVisibility;
 use App\Models\File;
 use App\Models\Folder;
@@ -91,11 +92,20 @@ class SearchController extends Controller
                         ->where('visibility', FileVisibility::Collaborative)
                         ->where('department_id', $departmentId),
                 ),
+            )
+            ->orWhere(
+                fn (Builder $selected): Builder => $selected
+                    ->where('collaboration_scope', CollaborationScope::Selected)
+                    ->whereHas('collaborators', fn (Builder $users): Builder => $users->whereKey($user->id)),
             );
     }
 
     private function folderUrl(Folder $folder): string
     {
+        if ($folder->collaboration_scope === CollaborationScope::Selected) {
+            return route('folders.shared.show', $folder);
+        }
+
         return match ($folder->visibility) {
             FileVisibility::Private => route('folders.mine.show', $folder),
             FileVisibility::Collaborative => route('folders.department.show', $folder),

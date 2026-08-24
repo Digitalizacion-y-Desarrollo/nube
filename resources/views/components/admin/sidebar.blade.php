@@ -4,14 +4,24 @@
 
 @php
     $items = [
-        ['label' => 'Resumen', 'icon' => 'home', 'route' => 'admin.dashboard'],
-        ['label' => 'Archivos', 'icon' => 'file-text', 'route' => 'admin.files'],
-        ['label' => 'Departamentos', 'icon' => 'building', 'route' => 'admin.departments'],
-        ['label' => 'Usuarios', 'icon' => 'users', 'route' => 'admin.users'],
-        ['label' => 'Papelera', 'icon' => 'trash', 'route' => 'admin.trash'],
+        ['label' => 'Resumen', 'icon' => 'home', 'route' => 'admin.dashboard', 'permission' => 'nube_administracion_resumen_ver'],
+        ['label' => 'Archivos', 'icon' => 'file-text', 'route' => 'admin.files', 'permission' => 'nube_administracion_archivos_ver'],
+        ['label' => 'Departamentos', 'icon' => 'building', 'route' => 'admin.departments', 'permission' => 'nube_administracion_departamentos_ver'],
+        ['label' => 'Usuarios', 'icon' => 'users', 'route' => 'admin.users', 'permission' => 'nube_administracion_usuarios_ver'],
+        ['label' => 'Papelera', 'icon' => 'trash', 'route' => 'admin.trash', 'permission' => 'nube_administracion_papelera_ver'],
         ['label' => 'Auditoría', 'icon' => 'shield', 'route' => 'admin.audit'],
         ['label' => 'Configuración', 'icon' => 'lock-keyhole', 'route' => 'admin.settings'],
     ];
+    $viewPermissions = [
+        'admin.audit' => 'nube_administracion_auditoria_ver',
+        'admin.settings' => 'nube_administracion_configuracion_ver',
+    ];
+    $items = array_map(
+        fn (array $item): array => $item + ['permission' => $viewPermissions[$item['route']] ?? null],
+        $items,
+    );
+    $items = array_filter($items, fn (array $item): bool => $item['permission'] !== null
+        && (auth()->user()?->hasPermission($item['permission']) ?? false));
 @endphp
 
 <aside class="sticky top-0 hidden h-screen w-[292px] shrink-0 flex-col border-r border-white/10 bg-brand-dark px-5 py-6 text-white lg:flex">

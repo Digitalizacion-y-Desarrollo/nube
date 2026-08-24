@@ -41,7 +41,7 @@ class DepartmentCollaboratorService
             $departmentName,
             $remoteUsers,
         ): Collection {
-            return collect($remoteUsers)
+            $departmentUsers = collect($remoteUsers)
                 ->filter(fn (array $remoteUser): bool => $this->isEligible(
                     $remoteUser,
                     $currentExternalId,
@@ -81,6 +81,38 @@ class DepartmentCollaboratorService
                     ['name', 'asc'],
                     ['last_name', 'asc'],
                 ])
+                ->values();
+
+            // El API se usa para refrescar al departamento actual. Las personas
+            // de otras áreas ya sincronizadas localmente se añaden al directorio
+            // para permitir una compartición explícita, nunca por departamento.
+            $externalUsers = User::query()
+                ->with('department:id,name')
+                ->where('active', true)
+                ->where('id', '!=', $currentUser->id)
+                ->whereNotNull('department_id')
+                ->where('department_id', '!=', $currentUser->department_id)
+                ->orderBy('name')
+                ->orderBy('last_name')
+                ->get()
+                ->map(fn (User $user): array => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'last_name' => $user->last_name,
+                    'email' => $user->email,
+                    'position' => null,
+                    'role' => null,
+                    'department' => $user->department?->name ?? 'Sin departamento',
+                ]);
+
+            return $departmentUsers
+                ->map(fn (array $user): array => [
+                    ...$user,
+                    'department' => $currentUser->department?->name ?? 'Sin departamento',
+                ])
+                ->concat($externalUsers)
+                ->unique('id')
+                ->sortBy([['name', 'asc'], ['last_name', 'asc']])
                 ->values();
         });
     }

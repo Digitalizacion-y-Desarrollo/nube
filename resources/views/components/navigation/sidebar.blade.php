@@ -8,12 +8,26 @@
         ['label' => 'Inicio', 'icon' => 'home', 'route' => 'dashboard', 'permission' => null],
         ['label' => 'Mis Archivos', 'icon' => 'folder-open', 'route' => 'folders.mine', 'pattern' => 'folders.mine*', 'permission' => 'nube_mis_archivos_ver'],
         ['label' => 'Mi departamento', 'icon' => 'building', 'route' => 'folders.department', 'pattern' => 'folders.department*', 'permission' => 'nube_departamento_ver'],
+        ['label' => 'Compartidos conmigo', 'icon' => 'users', 'route' => 'folders.shared', 'pattern' => 'folders.shared*', 'permission' => 'nube_departamento_ver'],
         ['label' => 'Públicos', 'icon' => 'globe', 'route' => 'folders.public', 'pattern' => 'folders.public*', 'permission' => 'nube_publicos_ver'],
         ['label' => 'Papelera', 'icon' => 'trash', 'route' => 'folders.trash', 'permission' => 'nube_papelera_ver'],
     ];
 
     $isAdministrator = in_array('nube_administracion_administrar', $permissions, true);
-    $isSuperuser = auth()->user()?->hasRole('superuser') ?? false;
+    $adminViews = [
+        'admin.dashboard' => 'nube_administracion_resumen_ver',
+        'admin.files' => 'nube_administracion_archivos_ver',
+        'admin.departments' => 'nube_administracion_departamentos_ver',
+        'admin.users' => 'nube_administracion_usuarios_ver',
+        'admin.trash' => 'nube_administracion_papelera_ver',
+        'admin.audit' => 'nube_administracion_auditoria_ver',
+        'admin.settings' => 'nube_administracion_configuracion_ver',
+    ];
+    $adminEntryRoute = collect($adminViews)->search(
+        fn (string $permission): bool => in_array($permission, $permissions, true),
+    );
+    $isSuperuser = (auth()->user()?->hasRole('superuser') ?? false)
+        && $adminEntryRoute !== false;
     $items = array_filter(
         $items,
         fn (array $item): bool => $item['permission'] === null
@@ -51,7 +65,7 @@
         @if ($isSuperuser)
             <div class="my-5 h-px bg-line"></div>
             <a
-                href="{{ route('admin.dashboard') }}"
+                href="{{ route($adminEntryRoute) }}"
                 class="flex items-center gap-3 rounded-lg border border-gold/40 bg-gold/10 px-4 py-3 text-sm font-semibold text-brand hover:bg-gold/20 dark:text-white"
             >
                 <x-ui.icon name="shield" :size="20" alt="" />
@@ -101,7 +115,7 @@
                 </a>
             @endforeach
             @if ($isSuperuser)
-                <a href="{{ route('admin.dashboard') }}" class="mt-4 flex items-center gap-3 rounded-lg border border-gold/40 bg-gold/10 px-4 py-3 text-sm font-semibold text-brand dark:text-white">
+                <a href="{{ route($adminEntryRoute) }}" class="mt-4 flex items-center gap-3 rounded-lg border border-gold/40 bg-gold/10 px-4 py-3 text-sm font-semibold text-brand dark:text-white">
                     <x-ui.icon name="shield" :size="20" alt="" />
                     <span>Administración</span>
                 </a>

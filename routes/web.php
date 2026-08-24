@@ -64,6 +64,12 @@ Route::middleware('access.session')->group(function (): void {
     Route::get('/mi-departamento/{folder}', [FolderController::class, 'department'])
         ->middleware('access.permission:nube_departamento_ver')
         ->name('folders.department.show');
+    Route::get('/compartidos', [FolderController::class, 'shared'])
+        ->middleware('access.permission:nube_departamento_ver')
+        ->name('folders.shared');
+    Route::get('/compartidos/{folder}', [FolderController::class, 'shared'])
+        ->middleware('access.permission:nube_departamento_ver')
+        ->name('folders.shared.show');
     Route::get('/publicos', [FolderController::class, 'public'])
         ->middleware('access.permission:nube_publicos_ver')
         ->name('folders.public');
@@ -93,7 +99,7 @@ Route::middleware('access.session')->group(function (): void {
 
 Route::prefix('admin')
     ->name('admin.')
-    ->middleware(['access.session', 'superuser'])
+    ->middleware(['access.session', 'superuser', 'admin.view:nube_administracion_resumen_ver'])
     ->controller(AdminController::class)
     ->group(function (): void {
         Route::get('/', 'dashboard')->name('dashboard');
@@ -101,7 +107,7 @@ Route::prefix('admin')
 
 Route::prefix('admin/configuracion')
     ->name('admin.settings')
-    ->middleware(['access.session', 'superuser'])
+    ->middleware(['access.session', 'superuser', 'admin.view:nube_administracion_configuracion_ver'])
     ->controller(AdminSettingsController::class)
     ->group(function (): void {
         Route::get('/', 'index')->name('');
@@ -110,7 +116,7 @@ Route::prefix('admin/configuracion')
 
 Route::prefix('admin/auditoria')
     ->name('admin.audit')
-    ->middleware(['access.session', 'superuser'])
+    ->middleware(['access.session', 'superuser', 'admin.view:nube_administracion_auditoria_ver'])
     ->controller(AdminAuditController::class)
     ->group(function (): void {
         Route::get('/', 'index')->name('');
@@ -119,7 +125,7 @@ Route::prefix('admin/auditoria')
 
 Route::prefix('admin/papelera')
     ->name('admin.trash')
-    ->middleware(['access.session', 'superuser'])
+    ->middleware(['access.session', 'superuser', 'admin.view:nube_administracion_papelera_ver'])
     ->controller(AdminTrashController::class)
     ->group(function (): void {
         Route::get('/', 'index')->name('');
@@ -134,7 +140,7 @@ Route::prefix('admin/papelera')
 
 Route::prefix('admin/usuarios')
     ->name('admin.users')
-    ->middleware(['access.session', 'superuser'])
+    ->middleware(['access.session', 'superuser', 'admin.view:nube_administracion_usuarios_ver'])
     ->controller(AdminUserController::class)
     ->group(function (): void {
         Route::get('/', 'index')->name('');
@@ -143,7 +149,7 @@ Route::prefix('admin/usuarios')
 
 Route::prefix('admin/departamentos')
     ->name('admin.')
-    ->middleware(['access.session', 'superuser'])
+    ->middleware(['access.session', 'superuser', 'admin.view:nube_administracion_departamentos_ver'])
     ->controller(AdminDepartmentController::class)
     ->group(function (): void {
         Route::get('/', 'index')->name('departments');
@@ -152,7 +158,7 @@ Route::prefix('admin/departamentos')
 
 Route::prefix('admin/archivos')
     ->name('admin.')
-    ->middleware(['access.session', 'superuser'])
+    ->middleware(['access.session', 'superuser', 'admin.view:nube_administracion_archivos_ver'])
     ->controller(AdminFileController::class)
     ->group(function (): void {
         Route::get('/', 'index')->name('files');

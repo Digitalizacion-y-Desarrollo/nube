@@ -8,7 +8,7 @@
     porque varias instancias viven dentro de modales con su propio fondo
     (`x-ui.modal`); el overlay de pantalla completa de driver.js chocaría con
     ese fondo. El popover se ancla a la izquierda del botón, no centrado,
-    porque el panel del modal usa `overflow-y-auto`, que por especificación
+    porque el contenido desplazable del modal usa `overflow-y-auto`, que por especificación
     CSS también recorta el desbordamiento horizontal.
 --}}
 <span class="relative inline-flex" data-help-tip>

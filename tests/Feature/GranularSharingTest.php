@@ -291,7 +291,7 @@ class GranularSharingTest extends TestCase
         $this->assertSame(0, $overridden->collaborators()->count());
     }
 
-    public function test_collaborators_must_be_active_users_from_the_same_department(): void
+    public function test_collaborators_must_be_active_users_and_may_belong_to_another_department(): void
     {
         Storage::fake('nube');
         $owner = User::factory()->create();
@@ -300,21 +300,29 @@ class GranularSharingTest extends TestCase
             'department_id' => $owner->department_id,
         ]);
 
-        foreach ([$outsider, $inactive] as $invalidCollaborator) {
-            $this->authenticated($owner, ['nube_departamento_subir'])
-                ->post(route('files.store'), [
-                    'file' => UploadedFile::fake()->create('invalido.pdf', 10, 'application/pdf'),
-                    'visibility' => FileVisibility::Collaborative->value,
-                    'collaboration_scope' => CollaborationScope::Selected->value,
-                    'collaborators' => [$invalidCollaborator->id],
-                ])
-                ->assertSessionHasErrors('collaborators.0', errorBag: 'uploadFile');
-        }
+        $this->authenticated($owner, ['nube_departamento_subir'])
+            ->post(route('files.store'), [
+                'file' => UploadedFile::fake()->create('compartido.pdf', 10, 'application/pdf'),
+                'visibility' => FileVisibility::Collaborative->value,
+                'collaboration_scope' => CollaborationScope::Selected->value,
+                'collaborators' => [$outsider->id],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('status');
 
-        $this->assertSame(0, File::query()->count());
+        $this->authenticated($owner, ['nube_departamento_subir'])
+            ->post(route('files.store'), [
+                'file' => UploadedFile::fake()->create('invalido.pdf', 10, 'application/pdf'),
+                'visibility' => FileVisibility::Collaborative->value,
+                'collaboration_scope' => CollaborationScope::Selected->value,
+                'collaborators' => [$inactive->id],
+            ])
+            ->assertSessionHasErrors('collaborators.0', errorBag: 'uploadFile');
+
+        $this->assertSame(1, File::query()->count());
     }
 
-    public function test_creation_forms_only_list_active_people_from_the_same_department(): void
+    public function test_creation_forms_list_active_people_from_every_department(): void
     {
         $department = Department::factory()->create();
         $owner = User::factory()->create(['department_id' => $department->id]);
@@ -369,7 +377,7 @@ class GranularSharingTest extends TestCase
             'nube_publicos_subir',
         ])->get(route('folders.department'))
             ->assertOk()
-            ->assertSee('Todo mi departamento')
+            ->assertSee('Departamento completo')
             ->assertSee('Personas específicas')
             ->assertSee('Buscar por nombre, correo, cargo o rol')
             ->assertSee('data-collaborator-picker', false)
@@ -381,7 +389,7 @@ class GranularSharingTest extends TestCase
             ->assertSee('Analista')
             ->assertSee('Colaborador')
             ->assertDontSee($inactive->email)
-            ->assertDontSee($outsider->email);
+            ->assertSee($outsider->email);
     }
 
     public function test_creation_forms_fix_visibility_and_destinations_to_the_current_section(): void
@@ -620,6 +628,55 @@ class GranularSharingTest extends TestCase
             ->assertSee('id="file-visibility-collaborators-'.$file->id.'-list"', false)
             ->assertSee($collaborator->email)
             ->assertSee(route('folders.visibility', $folder));
+    }
+
+    public function test_selected_collaborator_from_another_department_can_access_only_the_shared_resource(): void
+    {
+        $ownerDepartment = Department::factory()->create();
+        $otherDepartment = Department::factory()->create();
+        $owner = User::factory()->create(['department_id' => $ownerDepartment->id]);
+        $externalCollaborator = User::factory()->create(['department_id' => $otherDepartment->id]);
+        $otherUser = User::factory()->create(['department_id' => $otherDepartment->id]);
+        $shared = File::factory()->create([
+            'owner_id' => $owner->id,
+            'department_id' => $ownerDepartment->id,
+            'visibility' => FileVisibility::Collaborative,
+            'collaboration_scope' => CollaborationScope::Selected,
+            'display_name' => 'Acuerdo compartido.pdf',
+        ]);
+        $departmentOnly = File::factory()->create([
+            'owner_id' => $owner->id,
+            'department_id' => $ownerDepartment->id,
+            'visibility' => FileVisibility::Collaborative,
+            'collaboration_scope' => CollaborationScope::Department,
+            'display_name' => 'Solo departamento.pdf',
+        ]);
+        $shared->collaborators()->attach($externalCollaborator->id, [
+            'can_view' => true,
+            'can_download' => true,
+            'can_rename' => false,
+            'can_move' => false,
+            'can_delete' => false,
+            'created_at' => now(),
+        ]);
+
+        $this->authenticated($externalCollaborator, ['nube_departamento_ver', 'nube_departamento_descargar'])
+            ->get(route('folders.department'))
+            ->assertOk()
+            ->assertDontSee('Acuerdo compartido.pdf')
+            ->assertDontSee('Solo departamento.pdf');
+
+        $this->get(route('folders.shared'))
+            ->assertOk()
+            ->assertSee('Compartidos conmigo')
+            ->assertSee('Acuerdo compartido.pdf')
+            ->assertDontSee('Solo departamento.pdf');
+
+        $this->assertTrue($externalCollaborator->can('view', $shared));
+        $this->assertTrue($externalCollaborator->can('download', $shared));
+        $this->assertFalse($externalCollaborator->can('update', $shared));
+        $this->assertFalse($otherUser->can('view', $shared));
+        $this->assertFalse($externalCollaborator->can('view', $departmentOnly));
     }
 
     private function file(

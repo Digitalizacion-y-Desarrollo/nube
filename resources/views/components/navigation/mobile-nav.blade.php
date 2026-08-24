@@ -12,6 +12,18 @@
     ];
 
     $isAdministrator = in_array('nube_administracion_administrar', $permissions, true);
+    $adminViews = [
+        'admin.dashboard' => 'nube_administracion_resumen_ver',
+        'admin.files' => 'nube_administracion_archivos_ver',
+        'admin.departments' => 'nube_administracion_departamentos_ver',
+        'admin.users' => 'nube_administracion_usuarios_ver',
+        'admin.trash' => 'nube_administracion_papelera_ver',
+        'admin.audit' => 'nube_administracion_auditoria_ver',
+        'admin.settings' => 'nube_administracion_configuracion_ver',
+    ];
+    $adminEntryRoute = collect($adminViews)->search(
+        fn (string $permission): bool => in_array($permission, $permissions, true),
+    );
     $items = array_filter(
         $items,
         fn (array $item): bool => $item['permission'] === null
@@ -23,11 +35,11 @@
     // funcional, sino por el rol `superuser` (ver AGENT.md); antes sólo se
     // podía llegar ahí abriendo el menú hamburguesa, a diferencia del
     // escritorio, donde es un enlace siempre visible en la barra lateral.
-    if (auth()->user()?->hasRole('superuser')) {
+    if (auth()->user()?->hasRole('superuser') && $adminEntryRoute !== false) {
         $items[] = [
             'label' => 'Admin',
             'icon' => 'shield',
-            'route' => 'admin.dashboard',
+            'route' => $adminEntryRoute,
             'pattern' => 'admin.*',
             'permission' => null,
         ];

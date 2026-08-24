@@ -17,13 +17,13 @@ trait ValidatesCollaborators
     {
         return [
             'collaboration_scope' => [
-                Rule::requiredIf($this->isCollaborative()),
+                Rule::requiredIf($this->usesSelectedSharing()),
                 'nullable',
                 Rule::enum(CollaborationScope::class),
             ],
             'collaborators' => [
                 Rule::requiredIf(
-                    $this->isCollaborative()
+                    $this->usesSelectedSharing()
                     && $this->input('collaboration_scope') === CollaborationScope::Selected->value,
                 ),
                 'nullable',
@@ -36,7 +36,6 @@ trait ValidatesCollaborators
                 Rule::notIn([$this->user()?->id]),
                 Rule::exists('users', 'id')->where(
                     fn (Builder $query): Builder => $query
-                        ->where('department_id', $this->user()?->department_id)
                         ->where('active', true),
                 ),
             ],
@@ -80,6 +79,8 @@ trait ValidatesCollaborators
                 'string',
                 Rule::enum(CollaboratorPermission::class),
             ],
+            'sharing_expires_at' => ['nullable', 'date', 'after:now'],
+            'sharing_duration' => ['nullable', Rule::in(['permanent', 'limited'])],
         ];
     }
 
@@ -97,11 +98,12 @@ trait ValidatesCollaborators
             'collaborators.*.integer' => 'Uno de los colaboradores no es válido.',
             'collaborators.*.distinct' => 'No repitas personas en la selección.',
             'collaborators.*.not_in' => 'El propietario ya tiene acceso y no debe seleccionarse.',
-            'collaborators.*.exists' => 'Solo puedes seleccionar personas activas de tu departamento.',
+            'collaborators.*.exists' => 'Solo puedes seleccionar personas activas.',
             'collaborator_permissions.array' => 'La configuración de permisos por persona no es válida.',
             'collaborator_permissions.*.array' => 'Los permisos asignados a una persona no son válidos.',
             'collaborator_permissions.*.min' => 'Asigna al menos el permiso para ver.',
             'collaborator_permissions.*.*.enum' => 'Uno de los permisos internos seleccionados no es válido.',
+            'sharing_expires_at.after' => 'La fecha de vencimiento debe ser posterior a este momento.',
         ];
     }
 
@@ -112,10 +114,29 @@ trait ValidatesCollaborators
                 'collaboration_scope' => CollaborationScope::Department->value,
             ]);
         }
+
+        if ($this->usesPrivateSharing()) {
+            $this->merge(['collaboration_scope' => CollaborationScope::Selected->value]);
+        }
+
+        if ($this->input('sharing_duration') !== 'limited') {
+            $this->merge(['sharing_expires_at' => null]);
+        }
     }
 
     private function isCollaborative(): bool
     {
         return $this->input('visibility') === FileVisibility::Collaborative->value;
+    }
+
+    private function usesPrivateSharing(): bool
+    {
+        return $this->input('visibility') === FileVisibility::Private->value
+            && $this->boolean('share_privately');
+    }
+
+    private function usesSelectedSharing(): bool
+    {
+        return $this->isCollaborative() || $this->usesPrivateSharing();
     }
 }
