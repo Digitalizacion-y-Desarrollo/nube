@@ -161,6 +161,15 @@ final de cada sesión de trabajo y consultarse antes de iniciar una nueva.
 ### Épico 05 — Gestión de archivos privados
 
 - Modal de carga con selector de carpeta destino y estado visual de carga.
+- Carga por arrastre disponible en todo el explorador para archivos y carpetas:
+  - conserva la jerarquía relativa y crea también carpetas vacías;
+  - procesa cada elemento por separado para evitar los límites de cantidad y
+    tamaño total de una única petición PHP;
+  - muestra resaltado de destino, progreso, éxito y resumen de errores parciales;
+  - hereda ubicación, clasificación y colaboración del formulario actual;
+  - exige en servidor los permisos independientes de subida y creación;
+  - rechaza rutas absolutas, traversal, nombres manipulados, exceso de
+    profundidad, colisiones y archivos fuera de las reglas vigentes.
 - Límite máximo ampliado a **200 MB** y alineado en:
   - Laravel: `NUBE_MAX_FILE_SIZE_KB=204800`.
   - PHP CLI: `upload_max_filesize=200M`, `post_max_size=210M`.
@@ -808,6 +817,44 @@ arquitectura que merece su propia decisión, no una corrección puntual.
 - Pruebas nuevas: `CustomErrorPagesTest`, `BrandedPaginationTest`,
   `CollapsibleFiltersTest`, `AdminFileDetailActionsTest` y
   `MobileAdminNavigationTest`.
+
+### Carga por arrastre de archivos y carpetas (27 de agosto de 2026)
+
+- Nueva zona visible en el explorador cuando existe permiso de subida; acepta
+  soltar archivos o carpetas en cualquier punto de la página y conserva la
+  jerarquía relativa, incluidas carpetas vacías.
+- Dentro del modal de subida, soltar un archivo sólo lo selecciona en el campo;
+  espera a que la persona complete todos los datos y pulse el botón. Carpetas o
+  selecciones múltiples se rechazan allí con una instrucción útil.
+- La subida normal y la cola por arrastre se ejecutan por AJAX con una pantalla
+  modal bloqueante, animación, progreso, foco gestionado y aviso para no cerrar,
+  recargar ni navegar. `beforeunload` solicita confirmación mientras existe una
+  transferencia activa.
+- El modal de edición conserva su alcance de renombrado y explica que no
+  sustituye silenciosamente el contenido físico.
+- La cola envía un elemento por petición y muestra destino activo, progreso,
+  confirmación y errores parciales sin bloquear los elementos restantes.
+- `UploadDroppedItemRequest` valida tipo, archivo, MIME, extensión, tamaño,
+  profundidad, nombres y ruta relativa; bloquea rutas absolutas, unidades de
+  Windows, segmentos `.`/`..`, traversal y discrepancias del nombre terminal.
+- `DroppedUploadController` reconstruye carpetas sólo con autorización,
+  reutiliza rutas propias existentes, conserva clasificación/colaboración y
+  registra cada carpeta nueva en auditoría. El almacenamiento de archivos sigue
+  pasando por `FileStorageService` y `FileObserver`.
+- Cobertura nueva en `DragAndDropUploadTest`: jerarquía con archivo, carpeta
+  vacía, reutilización de rutas, traversal, nombre falsificado, autorización y
+  visibilidad de la zona por permisos.
+- Verificación focalizada: **69 pruebas aprobadas, 440 aserciones** para carga,
+  archivos, carpetas, colaboración e interfaz; Laravel Pint, Vite, caché de
+  vistas, rutas y `git diff --check` aprobados.
+- La suite completa actual reporta **205 pruebas aprobadas y 35 fallidas**. Los
+  fallos están en expectativas administrativas, permisos de demostración y
+  textos de ayuda fuera del flujo modificado; ninguna prueba de carga, archivos,
+  carpetas o del nuevo arrastre falla.
+- Limitación del entorno: no hubo un navegador integrado disponible; quedaron
+  pendientes las capturas de escritorio/móvil, el arrastre físico desde el
+  sistema operativo y la inspección de consola. No se sustituyeron por una
+  captura simulada.
 
 ## Decisiones que deben conservarse
 

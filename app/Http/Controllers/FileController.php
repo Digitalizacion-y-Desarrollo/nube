@@ -13,6 +13,7 @@ use App\Models\AuditLog;
 use App\Models\File;
 use App\Models\Folder;
 use App\Services\Files\FileStorageService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -25,7 +26,7 @@ class FileController extends Controller
         private readonly FileStorageService $storage,
     ) {}
 
-    public function store(UploadFileRequest $request): RedirectResponse
+    public function store(UploadFileRequest $request): RedirectResponse|JsonResponse
     {
         $folder = $request->validated('folder_id') === null
             ? null
@@ -63,9 +64,27 @@ class FileController extends Controller
                 ]);
             }
 
-            return back()->with('status', "El archivo «{$file->display_name}» fue cargado.");
+            $message = "El archivo «{$file->display_name}» fue cargado.";
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $message,
+                    'file' => [
+                        'id' => $file->id,
+                        'display_name' => $file->display_name,
+                    ],
+                ], 201);
+            }
+
+            return back()->with('status', $message);
         } catch (Throwable $exception) {
             report($exception);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'No fue posible guardar el archivo. Verifica el almacenamiento e intenta nuevamente.',
+                ], 500);
+            }
 
             return back()->with(
                 'file_error',

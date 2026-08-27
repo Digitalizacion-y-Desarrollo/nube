@@ -134,6 +134,37 @@ adicional cuando `LimitRequestBody` permanece en `0`; si se define, debe ser de
 al menos 209715200 bytes. Después de modificar PHP o el servidor web, reinicia
 el servicio correspondiente.
 
+## Carga por arrastre
+
+En las ubicaciones donde la persona tiene permiso para subir aparece una zona
+que acepta archivos y carpetas arrastrados desde el equipo. Al soltar una
+carpeta fuera del modal, el navegador enumera sus elementos y la aplicación
+reconstruye su estructura relativa, incluidas las carpetas vacías. Cada elemento
+se envía en una petición independiente para no depender del límite de archivos
+por petición de PHP y la interfaz informa el progreso y los errores parciales.
+
+Dentro del modal **Subir archivo**, arrastrar un archivo únicamente lo asigna al
+selector. La persona puede completar el nombre, destino, clasificación y
+colaboración antes de pulsar el botón de subida; las carpetas y selecciones
+múltiples se rechazan en ese formulario y deben soltarse en el explorador.
+
+La clasificación, la ubicación y la configuración de colaboración se toman del
+formulario de carga de la vista actual. Crear una estructura arrastrada requiere
+también el permiso para crear carpetas. Las rutas relativas se validan en el
+servidor y se rechazan rutas absolutas, segmentos `..`, nombres inválidos,
+profundidades mayores a 100 niveles y archivos que no cumplan los tipos o el
+límite de 200 MB configurados.
+
+Tanto el formulario normal como la carga directa por arrastre usan peticiones
+AJAX. Mientras se transfieren, una pantalla con animación y progreso bloquea la
+interfaz, mueve el foco al estado de carga y advierte que no se debe cerrar,
+recargar ni cambiar de página. El navegador también solicita confirmación si se
+intenta abandonar la vista antes de terminar.
+
+El modal **Editar archivo** sólo modifica el nombre visible y nunca reemplaza el
+contenido físico; por eso remite al modal de subida para agregar documentos o
+carpetas nuevos.
+
 ## Papelera y auditoría
 
 Los archivos permanecen 30 días en Papelera de forma predeterminada. El plazo
