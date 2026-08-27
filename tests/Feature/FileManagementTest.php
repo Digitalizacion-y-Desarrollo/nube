@@ -80,6 +80,27 @@ class FileManagementTest extends TestCase
         $this->assertSame('Contrato firmado 2026.pdf', $file->display_name);
     }
 
+    public function test_file_upload_returns_json_for_the_blocking_ajax_flow(): void
+    {
+        Storage::fake('nube');
+        $user = User::factory()->create();
+
+        $this->authenticated($user, ['nube_mis_archivos_subir'])
+            ->withHeader('Accept', 'application/json')
+            ->post(route('files.store'), [
+                'file' => UploadedFile::fake()->create('informe.pdf', 24, 'application/pdf'),
+                'visibility' => 'private',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('file.display_name', 'informe.pdf')
+            ->assertJsonPath('message', 'El archivo «informe.pdf» fue cargado.');
+
+        $this->assertDatabaseHas('files', [
+            'owner_id' => $user->id,
+            'display_name' => 'informe.pdf',
+        ]);
+    }
+
     public function test_upload_rejects_a_display_name_already_used_in_the_same_location(): void
     {
         Storage::fake('nube');

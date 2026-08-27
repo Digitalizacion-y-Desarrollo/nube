@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DroppedUploadController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\NotificationController;
@@ -46,6 +47,8 @@ Route::middleware('access.session')->group(function (): void {
         ->name('folders.visibility');
     Route::post('/mis-archivos/archivos', [FileController::class, 'store'])
         ->name('files.store');
+    Route::post('/mis-archivos/elementos-arrastrados', DroppedUploadController::class)
+        ->name('files.drop-store');
     Route::get('/mis-archivos/archivos/{file}/descargar', [FileController::class, 'download'])
         ->name('files.download');
     Route::get('/mis-archivos/archivos/{file}/vista-previa', [FileController::class, 'preview'])

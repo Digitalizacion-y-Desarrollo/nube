@@ -6,8 +6,30 @@
                 :title="$currentFolder ? 'Agregar archivo en '.$currentFolder->name : 'Subir archivo'"
                 :data-modal-auto-open="$errors->uploadFile->any() || $autoOpenModal === 'upload' ? 'true' : null"
             >
-                <form action="{{ route('files.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4" data-file-upload-form data-sharing-form>
+                <form id="file-upload-form" action="{{ route('files.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4" data-file-upload-form data-sharing-form>
                     @csrf
+
+                    <section
+                        data-drop-upload-surface
+                        data-drop-upload-form-target
+                        aria-label="Zona de carga por arrastre"
+                        class="rounded-xl border-2 border-dashed border-line bg-surface-alt px-4 py-5 text-center transition"
+                    >
+                        <span class="mx-auto flex size-11 items-center justify-center rounded-xl bg-brand/5 text-brand dark:text-white">
+                            <x-ui.icon name="upload-cloud" :size="22" alt="" />
+                        </span>
+                        <p class="mt-3 text-sm font-bold text-ink">Arrastra aquí un archivo</p>
+                        <p class="mt-1 text-xs leading-5 text-muted">
+                            Sólo quedará seleccionado. Podrás completar los datos antes de subirlo.
+                        </p>
+                        <p data-file-drop-status hidden class="mt-3 text-xs font-semibold text-muted" aria-live="polite"></p>
+                    </section>
+
+                    <div class="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-muted" aria-hidden="true">
+                        <span class="h-px flex-1 bg-line"></span>
+                        <span>o selecciona un archivo</span>
+                        <span class="h-px flex-1 bg-line"></span>
+                    </div>
 
                     <label class="block">
                         <span class="mb-1.5 block text-[13px] font-semibold text-muted">Archivo</span>
@@ -92,6 +114,8 @@
                     @if ($errors->uploadFile->has('visibility'))
                         <x-ui.alert>{{ $errors->uploadFile->first('visibility') }}</x-ui.alert>
                     @endif
+
+                    <p data-file-upload-error hidden role="alert" tabindex="-1" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700 outline-none dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"></p>
 
                     <div class="rounded-lg bg-soft px-3 py-2.5 text-xs leading-5 text-muted">
                         <p>Máximo: 200 MB. PDF, Office, TXT, CSV, JPG, PNG o ZIP.</p>
@@ -361,6 +385,10 @@
 
                         <p class="text-xs leading-5 text-muted">El nombre físico seguro no será modificado.</p>
 
+                        <p class="rounded-lg bg-soft px-3 py-2.5 text-xs leading-5 text-muted">
+                            Esta edición sólo cambia el nombre visible. Para agregar otro archivo o una carpeta, usa el modal de subida y arrastra el contenido allí.
+                        </p>
+
                         <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                             <x-ui.button type="button" variant="secondary" :data-modal-close="$fileItem['rename_modal_id']">
                                 Cancelar
@@ -600,6 +628,40 @@
         <x-ui.alert tone="warning" class="mb-5">
             Los archivos se eliminan permanentemente {{ $trashRetentionDays }} días después de enviarse a la Papelera.
         </x-ui.alert>
+    @endif
+
+    @if ($canUploadFile)
+        <section
+            data-drop-upload
+            data-drop-upload-surface
+            data-drop-endpoint="{{ route('files.drop-store') }}"
+            data-upload-form="file-upload-form"
+            data-can-create-folders="{{ $canCreateFolder ? 'true' : 'false' }}"
+            data-max-file-size="{{ (int) config('nube.files.max_size_kb') * 1024 }}"
+            aria-labelledby="drop-upload-title"
+            class="mb-5 rounded-xl border-2 border-dashed border-line bg-surface px-4 py-4 transition sm:px-5"
+        >
+            <div class="flex items-center gap-3">
+                <span class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand/5 text-brand dark:text-white">
+                    <x-ui.icon name="upload-cloud" :size="22" alt="" />
+                </span>
+                <div class="min-w-0 flex-1">
+                    <h3 id="drop-upload-title" class="text-sm font-bold text-ink">
+                        Arrastra aquí archivos o carpetas
+                    </h3>
+                    <p class="mt-1 text-xs leading-5 text-muted" data-drop-upload-hint>
+                        Se cargarán en {{ $currentFolder ? 'esta carpeta' : 'la ubicación actual' }} y se conservará la estructura de sus subcarpetas.
+                    </p>
+                    <div class="mt-3 hidden" data-drop-upload-progress-wrap>
+                        <div class="flex items-center justify-between gap-3 text-xs font-semibold text-muted">
+                            <span data-drop-upload-status aria-live="polite">Preparando carga…</span>
+                            <span data-drop-upload-count></span>
+                        </div>
+                        <progress data-drop-upload-progress class="mt-2 h-2 w-full accent-brand" value="0" max="1">0%</progress>
+                    </div>
+                </div>
+            </div>
+        </section>
     @endif
 
     <section aria-label="Resumen de la ubicación" data-tour="explorer-summary" class="mb-5 grid grid-cols-2 gap-3 sm:max-w-md">
@@ -1001,5 +1063,29 @@
         <nav class="mt-5" aria-label="Paginación del explorador">
             {{ $pagination->onEachSide(1)->links() }}
         </nav>
+    @endif
+
+    @if ($canUploadFile)
+        <div
+            data-upload-lock
+            class="fixed inset-0 z-[90] hidden items-center justify-center bg-[#1f1f24]/70 p-4 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="upload-lock-title"
+            aria-describedby="upload-lock-description"
+            aria-hidden="true"
+        >
+            <section tabindex="-1" data-upload-lock-panel class="w-full max-w-md rounded-2xl border border-white/15 bg-surface p-6 text-center shadow-2xl sm:p-8">
+                <span class="mx-auto block size-14 rounded-full border-4 border-brand/20 border-t-brand motion-safe:animate-spin" aria-hidden="true"></span>
+                <h2 id="upload-lock-title" class="mt-5 text-xl font-extrabold text-ink">Subiendo contenido…</h2>
+                <p id="upload-lock-description" class="mt-2 text-sm leading-6 text-muted">
+                    No cierres, recargues ni cambies de página hasta que termine la carga.
+                </p>
+                <p data-upload-lock-status class="mt-4 text-sm font-semibold text-brand dark:text-white" aria-live="assertive">
+                    Preparando archivo…
+                </p>
+                <progress data-upload-lock-progress class="mt-4 hidden h-2 w-full accent-brand" value="0" max="1">0%</progress>
+            </section>
+        </div>
     @endif
 </x-layouts.app>

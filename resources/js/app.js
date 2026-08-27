@@ -934,35 +934,577 @@ document.querySelectorAll('[data-collaborator-picker]').forEach((picker) => {
     syncSummary();
 });
 
+const uploadLock = document.querySelector('[data-upload-lock]');
+const uploadLockPanel = uploadLock?.querySelector('[data-upload-lock-panel]');
+const uploadLockStatus = uploadLock?.querySelector('[data-upload-lock-status]');
+const uploadLockProgress = uploadLock?.querySelector('[data-upload-lock-progress]');
+let uploadInProgress = false;
+let uploadPreviousFocus = null;
+
+const warnBeforeUploadLeaves = (event) => {
+    if (!uploadInProgress) {
+        return;
+    }
+
+    event.preventDefault();
+    event.returnValue = '';
+};
+
+const blockInteractionDuringUpload = (event) => {
+    if (!uploadInProgress || uploadLock?.contains(event.target)) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    uploadLockPanel?.focus();
+};
+
+const beginUploadLock = (message, maximum = null) => {
+    if (!uploadLock) {
+        return;
+    }
+
+    uploadInProgress = true;
+    uploadPreviousFocus = document.activeElement;
+    uploadLockStatus.textContent = message;
+    uploadLock.classList.remove('hidden');
+    uploadLock.classList.add('flex');
+    uploadLock.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('overflow-hidden');
+
+    if (maximum === null) {
+        uploadLockProgress.classList.add('hidden');
+        uploadLockProgress.removeAttribute('value');
+    } else {
+        uploadLockProgress.classList.remove('hidden');
+        uploadLockProgress.max = Math.max(maximum, 1);
+        uploadLockProgress.value = 0;
+    }
+
+    window.addEventListener('beforeunload', warnBeforeUploadLeaves);
+    window.requestAnimationFrame(() => uploadLockPanel?.focus());
+};
+
+const updateUploadLock = (message, value = null, maximum = null) => {
+    if (uploadLockStatus) {
+        uploadLockStatus.textContent = message;
+    }
+
+    if (uploadLockProgress && value !== null) {
+        uploadLockProgress.classList.remove('hidden');
+        uploadLockProgress.max = Math.max(maximum ?? uploadLockProgress.max, 1);
+        uploadLockProgress.value = value;
+    }
+};
+
+const endUploadLock = (restoreFocus = true) => {
+    uploadInProgress = false;
+    window.removeEventListener('beforeunload', warnBeforeUploadLeaves);
+    uploadLock?.classList.add('hidden');
+    uploadLock?.classList.remove('flex');
+    uploadLock?.setAttribute('aria-hidden', 'true');
+
+    if (!document.querySelector('[data-modal]:not(.hidden)')) {
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    if (restoreFocus && uploadPreviousFocus instanceof HTMLElement) {
+        uploadPreviousFocus.focus();
+    }
+
+    uploadPreviousFocus = null;
+};
+
+['click', 'submit', 'keydown'].forEach((eventName) => {
+    document.addEventListener(eventName, blockInteractionDuringUpload, true);
+});
+
+const uploadResponseError = async (response) => {
+    try {
+        const body = await response.json();
+        const validationMessage = Object.values(body.errors || {}).flat()[0];
+        return validationMessage || body.message || `La carga respondió con el código ${response.status}.`;
+    } catch {
+        return `La carga respondió con el código ${response.status}.`;
+    }
+};
+
 document.querySelectorAll('[data-file-upload-form]').forEach((form) => {
     const fileInput = form.querySelector('[data-file-upload-input]');
     const nameInput = form.querySelector('[data-file-upload-name]');
+    const dropStatus = form.querySelector('[data-file-drop-status]');
+    const button = form.querySelector('[data-file-upload-submit]');
+    const label = form.querySelector('[data-file-upload-label]');
+    const errorElement = form.querySelector('[data-file-upload-error]');
+    let previousSelectedName = null;
 
     fileInput?.addEventListener('change', () => {
-        if (!nameInput || nameInput.value.trim() !== '') {
-            return;
-        }
-
         const selectedFile = fileInput.files?.[0];
 
-        if (selectedFile) {
+        if (selectedFile
+            && nameInput
+            && (nameInput.value.trim() === '' || nameInput.value === previousSelectedName)) {
             nameInput.value = selectedFile.name;
+        }
+
+        previousSelectedName = selectedFile?.name || null;
+
+        if (dropStatus) {
+            dropStatus.textContent = selectedFile
+                ? `Archivo seleccionado: ${selectedFile.name}. Completa los datos y pulsa “Subir archivo”.`
+                : '';
+            dropStatus.hidden = !selectedFile;
+            dropStatus.classList.remove('text-red-700', 'dark:text-red-300');
+            dropStatus.classList.add('text-muted');
+        }
+
+        if (errorElement) {
+            errorElement.hidden = true;
+            errorElement.textContent = '';
         }
     });
 
-    form.addEventListener('submit', () => {
-        const button = form.querySelector('[data-file-upload-submit]');
-        const label = form.querySelector('[data-file-upload-label]');
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
 
-        if (!button || !label) {
+        if (!button || !label || uploadInProgress) {
             return;
         }
 
         button.disabled = true;
         button.classList.add('cursor-wait', 'opacity-70');
         label.textContent = 'Subiendo...';
+
+        if (errorElement) {
+            errorElement.hidden = true;
+            errorElement.textContent = '';
+        }
+
+        beginUploadLock(`Subiendo ${fileInput.files?.[0]?.name || 'archivo'}…`);
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error(await uploadResponseError(response));
+            }
+
+            if (!response.headers.get('content-type')?.includes('application/json')) {
+                throw new Error('La sesión cambió durante la carga. Recarga la página e intenta nuevamente.');
+            }
+
+            const body = await response.json();
+            updateUploadLock(body.message || 'Archivo cargado correctamente.');
+
+            try {
+                sessionStorage.setItem('nube.dropUploadStatus', body.message || 'Archivo cargado correctamente.');
+            } catch {
+                // El mensaje de la pantalla de carga sigue confirmando el resultado.
+            }
+
+            window.setTimeout(() => {
+                endUploadLock(false);
+                window.location.reload();
+            }, 450);
+        } catch (error) {
+            endUploadLock();
+            button.disabled = false;
+            button.classList.remove('cursor-wait', 'opacity-70');
+            label.textContent = 'Subir archivo';
+
+            if (errorElement) {
+                errorElement.textContent = error.message || 'No fue posible subir el archivo.';
+                errorElement.hidden = false;
+                errorElement.focus?.();
+            }
+        }
     });
 });
+
+const dropUpload = document.querySelector('[data-drop-upload]');
+
+if (dropUpload) {
+    const form = document.getElementById(dropUpload.dataset.uploadForm);
+    const dropSurfaces = Array.from(document.querySelectorAll('[data-drop-upload-surface]'));
+    const progressWraps = Array.from(document.querySelectorAll('[data-drop-upload-progress-wrap]'));
+    const statusElements = Array.from(document.querySelectorAll('[data-drop-upload-status]'));
+    const countElements = Array.from(document.querySelectorAll('[data-drop-upload-count]'));
+    const progressElements = Array.from(document.querySelectorAll('[data-drop-upload-progress]'));
+    const formDropTarget = document.querySelector('[data-drop-upload-form-target]');
+    const uploadModal = formDropTarget?.closest('[data-modal]');
+    const canCreateFolders = dropUpload.dataset.canCreateFolders === 'true';
+    const maxFileSize = Number(dropUpload.dataset.maxFileSize || 0);
+    let dragDepth = 0;
+    let uploading = false;
+
+    const setDropActive = (active) => {
+        dropSurfaces.forEach((surface) => {
+            surface.classList.toggle('border-brand', active);
+            surface.classList.toggle('bg-brand/5', active);
+            surface.classList.toggle('ring-4', active);
+            surface.classList.toggle('ring-brand/10', active);
+        });
+    };
+
+    const showProgress = () => progressWraps.forEach((element) => element.classList.remove('hidden'));
+    const setStatus = (message) => statusElements.forEach((element) => {
+        element.textContent = message;
+    });
+    const setCount = (message) => countElements.forEach((element) => {
+        element.textContent = message;
+    });
+    const setProgress = (maximum, value) => progressElements.forEach((element) => {
+        element.max = maximum;
+        element.value = value;
+    });
+    const setBusy = (busy) => dropSurfaces.forEach((surface) => {
+        surface.setAttribute('aria-busy', String(busy));
+    });
+
+    const isFileDrag = (event) => Array.from(event.dataTransfer?.types || []).includes('Files');
+
+    const readDirectoryEntries = async (reader) => {
+        const entries = [];
+
+        while (true) {
+            const batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+
+            if (batch.length === 0) {
+                return entries;
+            }
+
+            entries.push(...batch);
+        }
+    };
+
+    const fileFromEntry = (entry) => new Promise((resolve, reject) => entry.file(resolve, reject));
+
+    const walkEntry = async (entry, parentPath, directories, files) => {
+        const relativePath = parentPath ? `${parentPath}/${entry.name}` : entry.name;
+
+        if (entry.isDirectory) {
+            directories.push({ kind: 'directory', relativePath });
+            const children = await readDirectoryEntries(entry.createReader());
+
+            for (const child of children) {
+                await walkEntry(child, relativePath, directories, files);
+            }
+
+            return;
+        }
+
+        if (entry.isFile) {
+            files.push({
+                kind: 'file',
+                relativePath,
+                file: await fileFromEntry(entry),
+            });
+        }
+    };
+
+    const droppedItems = async (dataTransfer) => {
+        const directories = [];
+        const files = [];
+        const entries = Array.from(dataTransfer.items || [])
+            .map((item) => item.webkitGetAsEntry?.())
+            .filter(Boolean);
+
+        if (entries.length > 0) {
+            for (const entry of entries) {
+                await walkEntry(entry, '', directories, files);
+            }
+        } else {
+            Array.from(dataTransfer.files || []).forEach((file) => {
+                files.push({
+                    kind: 'file',
+                    relativePath: file.webkitRelativePath || file.name,
+                    file,
+                });
+            });
+        }
+
+        directories.sort((first, second) => {
+            const depth = first.relativePath.split('/').length - second.relativePath.split('/').length;
+            return depth || first.relativePath.localeCompare(second.relativePath);
+        });
+
+        return [...directories, ...files];
+    };
+
+    const uploadItem = async (item) => {
+        const data = new FormData(form);
+        data.delete('file');
+        data.delete('display_name');
+        data.set('kind', item.kind);
+        data.set('relative_path', item.relativePath);
+
+        if (item.file) {
+            data.set('file', item.file, item.file.name);
+        }
+
+        const response = await fetch(dropUpload.dataset.dropEndpoint, {
+            method: 'POST',
+            body: data,
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            throw new Error(await uploadResponseError(response));
+        }
+    };
+
+    const setFormDropStatus = (target, message, error = false) => {
+        const element = target.querySelector('[data-file-drop-status]');
+
+        if (!element) {
+            return;
+        }
+
+        element.textContent = message;
+        element.hidden = false;
+        element.classList.toggle('text-muted', !error);
+        element.classList.toggle('text-red-700', error);
+        element.classList.toggle('dark:text-red-300', error);
+    };
+
+    const selectFileInForm = (dataTransfer, target) => {
+        const input = form?.querySelector('[data-file-upload-input]');
+        const entries = Array.from(dataTransfer.items || [])
+            .map((item) => item.webkitGetAsEntry?.())
+            .filter(Boolean);
+
+        if (!input) {
+            return;
+        }
+
+        if (entries.some((entry) => entry.isDirectory)) {
+            setFormDropStatus(
+                target,
+                'El formulario acepta un archivo a la vez. Para subir una carpeta, suéltala fuera del modal.',
+                true,
+            );
+            return;
+        }
+
+        const files = Array.from(dataTransfer.files || []);
+
+        if (files.length !== 1) {
+            setFormDropStatus(target, 'Selecciona exactamente un archivo para este formulario.', true);
+            return;
+        }
+
+        const file = files[0];
+        const extension = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+        const allowedExtensions = input.accept
+            .split(',')
+            .map((value) => value.trim().replace(/^\./, '').toLowerCase())
+            .filter(Boolean);
+
+        if (allowedExtensions.length > 0 && !allowedExtensions.includes(extension)) {
+            setFormDropStatus(target, 'La extensión del archivo no está permitida.', true);
+            return;
+        }
+
+        if (maxFileSize > 0 && file.size > maxFileSize) {
+            setFormDropStatus(target, 'El archivo excede el límite de 200 MB.', true);
+            return;
+        }
+
+        try {
+            const transfer = new DataTransfer();
+            transfer.items.add(file);
+            input.files = transfer.files;
+        } catch {
+            try {
+                input.files = dataTransfer.files;
+            } catch {
+                setFormDropStatus(target, 'El navegador no permitió seleccionar el archivo arrastrado.', true);
+                return;
+            }
+        }
+
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        setFormDropStatus(
+            target,
+            `Archivo seleccionado: ${file.name}. Completa los datos y pulsa “Subir archivo”.`,
+        );
+    };
+
+    const runUpload = async (items) => {
+        if (!form || uploading || uploadInProgress) {
+            return;
+        }
+
+        if (items.some((item) => item.kind === 'directory') && !canCreateFolders) {
+            showProgress();
+            setStatus('No tienes permiso para crear las carpetas arrastradas en esta ubicación.');
+            setCount('');
+            return;
+        }
+
+        const oversized = items.find((item) => item.file && maxFileSize > 0 && item.file.size > maxFileSize);
+
+        if (oversized) {
+            showProgress();
+            setStatus(`«${oversized.relativePath}» excede el límite de 200 MB.`);
+            setCount('');
+            return;
+        }
+
+        uploading = true;
+        setBusy(true);
+        showProgress();
+        setProgress(Math.max(items.length, 1), 0);
+        setStatus('Iniciando carga…');
+        setCount(`0 de ${items.length}`);
+        beginUploadLock('Iniciando carga…', items.length);
+        const errors = [];
+        let completed = 0;
+
+        for (const item of items) {
+            setStatus(`Cargando ${item.relativePath}…`);
+            updateUploadLock(`Cargando ${item.relativePath}…`, completed, items.length);
+
+            try {
+                await uploadItem(item);
+            } catch (error) {
+                errors.push(`${item.relativePath}: ${error.message}`);
+            }
+
+            completed += 1;
+            setProgress(Math.max(items.length, 1), completed);
+            setCount(`${completed} de ${items.length}`);
+            updateUploadLock(`Procesados ${completed} de ${items.length} elementos…`, completed, items.length);
+        }
+
+        uploading = false;
+        setBusy(false);
+
+        if (errors.length === 0) {
+            const fileCount = items.filter((item) => item.kind === 'file').length;
+            const directoryCount = items.filter((item) => item.kind === 'directory').length;
+            const message = `Carga completa: ${fileCount} archivo(s) y ${directoryCount} carpeta(s).`;
+            setStatus(message);
+            updateUploadLock(message, completed, items.length);
+
+            try {
+                sessionStorage.setItem('nube.dropUploadStatus', message);
+            } catch {
+                // El almacenamiento de sesión puede estar deshabilitado; la recarga sigue siendo segura.
+            }
+
+            window.setTimeout(() => {
+                endUploadLock(false);
+                window.location.reload();
+            }, 500);
+            return;
+        }
+
+        setStatus(`${completed - errors.length} de ${completed} elementos se cargaron. ${errors.length} fallaron. ${errors.slice(0, 2).join(' ')}`);
+        endUploadLock();
+    };
+
+    let restoredStatus = null;
+
+    try {
+        restoredStatus = sessionStorage.getItem('nube.dropUploadStatus');
+    } catch {
+        restoredStatus = null;
+    }
+
+    if (restoredStatus) {
+        try {
+            sessionStorage.removeItem('nube.dropUploadStatus');
+        } catch {
+            // El mensaje se muestra aunque el navegador no permita limpiar la sesión.
+        }
+        showProgress();
+        setStatus(restoredStatus);
+        setCount('');
+        setProgress(1, 1);
+    }
+
+    document.addEventListener('dragenter', (event) => {
+        if (!uploading && !uploadInProgress && isFileDrag(event)) {
+            dragDepth += 1;
+            setDropActive(true);
+        }
+    });
+
+    document.addEventListener('dragover', (event) => {
+        if (isFileDrag(event)) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = uploading || uploadInProgress ? 'none' : 'copy';
+        }
+    });
+
+    document.addEventListener('dragleave', (event) => {
+        if (!isFileDrag(event)) {
+            return;
+        }
+
+        dragDepth = Math.max(0, dragDepth - 1);
+
+        if (dragDepth === 0) {
+            setDropActive(false);
+        }
+    });
+
+    document.addEventListener('drop', async (event) => {
+        if (!isFileDrag(event)) {
+            return;
+        }
+
+        event.preventDefault();
+        dragDepth = 0;
+        setDropActive(false);
+
+        if (uploading || uploadInProgress) {
+            return;
+        }
+
+        const formTarget = uploadModal
+            && !uploadModal.classList.contains('hidden')
+            && uploadModal.contains(event.target)
+            ? formDropTarget
+            : event.target.closest?.('[data-drop-upload-form-target]');
+
+        if (formTarget) {
+            selectFileInForm(event.dataTransfer, formTarget);
+            return;
+        }
+
+        try {
+            const items = await droppedItems(event.dataTransfer);
+
+            if (items.length === 0) {
+                showProgress();
+                setStatus('No se encontraron archivos o carpetas para cargar.');
+                setCount('');
+                return;
+            }
+
+            await runUpload(items);
+        } catch {
+            showProgress();
+            setStatus('No fue posible leer los elementos arrastrados. Intenta seleccionarlos de nuevo.');
+            setCount('');
+        }
+    });
+}
 
 document.querySelectorAll('[data-avatar-form]').forEach((form) => {
     const input = form.querySelector('[data-avatar-input]');
