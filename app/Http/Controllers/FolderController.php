@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\Access\DepartmentCollaboratorService;
 use App\Services\Access\Exceptions\AccessApiException;
 use App\Services\Folders\FolderPathService;
+use App\Services\Folders\SharedFolderInheritanceService;
 use App\Services\Sharing\CollaboratorPermissionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -34,6 +35,7 @@ class FolderController extends Controller
         private readonly FolderPathService $paths,
         private readonly DepartmentCollaboratorService $departmentCollaborators,
         private readonly CollaboratorPermissionService $collaboratorPermissions,
+        private readonly SharedFolderInheritanceService $inheritance,
     ) {}
 
     public function mine(BrowseExplorerRequest $request, ?Folder $folder = null): View
@@ -175,6 +177,13 @@ class FolderController extends Controller
             ? CollaborationScope::from($validated['collaboration_scope'])
             : null;
 
+        // Client supplied sharing data is never authoritative below a shared root.
+        $sharedRoot = $this->inheritance->rootFor($parent);
+        if ($sharedRoot !== null) {
+            $visibility = $sharedRoot->visibility;
+            $collaborationScope = CollaborationScope::Selected;
+        }
+
         $this->authorize('create', [Folder::class, $parent, $visibility]);
 
         $folder = DB::transaction(function () use (
@@ -183,6 +192,7 @@ class FolderController extends Controller
             $parent,
             $visibility,
             $collaborationScope,
+            $sharedRoot,
         ): Folder {
             $folder = Folder::query()->create([
                 'parent_id' => $parent?->id,
@@ -196,14 +206,20 @@ class FolderController extends Controller
             ]);
 
             $folder->collaborators()->sync(
-                $collaborationScope === CollaborationScope::Selected
+                $sharedRoot !== null
+                    ? []
+                    : ($collaborationScope === CollaborationScope::Selected
                     ? $this->collaboratorPermissions->pivotData(
                         $validated['collaborators'] ?? [],
                         $validated['collaborator_permissions'] ?? [],
                         $validated['sharing_expires_at'] ?? null,
                     )
-                    : [],
+                    : []),
             );
+
+            if ($sharedRoot !== null) {
+                $this->inheritance->syncFolder($folder, $sharedRoot);
+            }
 
             $this->auditFolder($request, 'folder.created', $folder, [
                 'name' => $folder->name,
@@ -325,6 +341,7 @@ class FolderController extends Controller
         $parent = $folder->parent()->first();
 
         $this->authorize('changeVisibility', [$folder, $visibility]);
+        abort_if($this->inheritance->isInherited($folder), 403);
 
         DB::transaction(function () use (
             $request,
@@ -349,6 +366,8 @@ class FolderController extends Controller
                     $request->validated('sharing_expires_at'),
                 ),
             );
+
+            $this->inheritance->propagate($folder);
 
             $this->auditFolder($request, 'folder.visibility_changed', $folder, [
                 'name' => $folder->name,
@@ -482,7 +501,8 @@ class FolderController extends Controller
                 || $request->user()->can('view', $folder))
             ->values();
 
-        $creationVisibility = match ($section) {
+        $sharedRoot = $this->inheritance->rootFor($currentFolder);
+        $creationVisibility = $sharedRoot?->visibility ?? match ($section) {
             'mine' => FileVisibility::Private,
             'department' => FileVisibility::Collaborative,
             'public' => FileVisibility::Public,
@@ -559,7 +579,8 @@ class FolderController extends Controller
             'public' => FileVisibility::Public->value,
             default => FileVisibility::Private->value,
         };
-        $inheritedVisibility = $currentFolder?->visibility->value;
+        $inheritsSharedPermissions = $sharedRoot !== null;
+        $inheritedVisibility = $sharedRoot?->visibility->value ?? $currentFolder?->visibility->value;
         $defaultUploadVisibility = $inheritedVisibility !== null
             && $uploadVisibilityOptions->contains('value', $inheritedVisibility)
                 ? $inheritedVisibility
@@ -582,12 +603,12 @@ class FolderController extends Controller
         $defaultUploadCollaborators = [];
         $defaultUploadCollaboratorPermissions = [];
 
-        if ($currentFolder?->collaboration_scope === CollaborationScope::Selected) {
-            $currentFolder->loadMissing('collaborators:id');
-            $defaultUploadCollaborators = $currentFolder->collaborators
+        if ($sharedRoot !== null) {
+            $sharedRoot->loadMissing('collaborators:id');
+            $defaultUploadCollaborators = $sharedRoot->collaborators
                 ->pluck('id')
                 ->all();
-            $defaultUploadCollaboratorPermissions = $currentFolder->collaborators
+            $defaultUploadCollaboratorPermissions = $sharedRoot->collaborators
                 ->mapWithKeys(fn (User $collaborator): array => [
                     $collaborator->id => collect(CollaboratorPermission::cases())
                         ->filter(fn (CollaboratorPermission $permission): bool => (bool) $collaborator->pivot->{$permission->pivotColumn()})
@@ -629,6 +650,7 @@ class FolderController extends Controller
             'defaultUploadCollaborationScope' => $defaultUploadCollaborationScope,
             'defaultUploadCollaborators' => $defaultUploadCollaborators,
             'defaultUploadCollaboratorPermissions' => $defaultUploadCollaboratorPermissions,
+            'inheritsSharedPermissions' => $inheritsSharedPermissions,
             'destinationFolders' => $destinationFolders,
             'creationDestinationFolders' => $creationDestinationFolders,
             'departmentUsers' => $departmentUsers,
@@ -757,8 +779,12 @@ class FolderController extends Controller
         string $section,
         bool $trashed,
     ): array {
+        $sharedRoot = $this->inheritance->rootFor($folder);
+        $isSharedRoot = $sharedRoot !== null && $sharedRoot->id === $folder->id;
         $visibilityOptions = collect(FileVisibility::cases())
-            ->reject(fn (FileVisibility $visibility): bool => $visibility === $folder->visibility)
+            ->filter(fn (FileVisibility $visibility): bool => $visibility !== $folder->visibility
+                || $isSharedRoot
+                || in_array($visibility, [FileVisibility::Private, FileVisibility::Collaborative], true))
             ->filter(fn (FileVisibility $visibility): bool => $request->user()->can(
                 'changeVisibility',
                 [$folder, $visibility],
@@ -784,6 +810,16 @@ class FolderController extends Controller
             'visibility' => $folder->visibility->value,
             'is_private_shared' => $folder->visibility === FileVisibility::Private
                 && $folder->collaboration_scope === CollaborationScope::Selected,
+            'is_shared_root' => $isSharedRoot,
+            'collaboration_scope' => $folder->collaboration_scope?->value,
+            'collaborator_ids' => $folder->collaborators->pluck('id')->all(),
+            'collaborator_permissions' => $folder->collaborators->mapWithKeys(
+                fn (User $collaborator): array => [$collaborator->id => collect(CollaboratorPermission::cases())
+                    ->filter(fn (CollaboratorPermission $permission): bool => (bool) $collaborator->pivot->{$permission->pivotColumn()})
+                    ->map(fn (CollaboratorPermission $permission): string => $permission->value)
+                    ->values()
+                    ->all()],
+            )->all(),
             'visibility_label' => $folder->visibility->label(),
             'sharing_label' => $this->sharingLabel(
                 $folder->visibility,
@@ -833,7 +869,8 @@ class FolderController extends Controller
             ? null
             : max(0, (int) ceil(now()->diffInDays($purgeAt, false)));
         $visibilityOptions = collect(FileVisibility::cases())
-            ->reject(fn (FileVisibility $visibility): bool => $visibility === $file->visibility)
+            ->filter(fn (FileVisibility $visibility): bool => $visibility !== $file->visibility
+                || in_array($visibility, [FileVisibility::Private, FileVisibility::Collaborative], true))
             ->filter(fn (FileVisibility $visibility): bool => $request->user()->can(
                 'changeVisibility',
                 [$file, $visibility],
@@ -859,6 +896,15 @@ class FolderController extends Controller
             'visibility' => $file->visibility->value,
             'is_private_shared' => $file->visibility === FileVisibility::Private
                 && $file->collaboration_scope === CollaborationScope::Selected,
+            'collaboration_scope' => $file->collaboration_scope?->value,
+            'collaborator_ids' => $file->collaborators->pluck('id')->all(),
+            'collaborator_permissions' => $file->collaborators->mapWithKeys(
+                fn (User $collaborator): array => [$collaborator->id => collect(CollaboratorPermission::cases())
+                    ->filter(fn (CollaboratorPermission $permission): bool => (bool) $collaborator->pivot->{$permission->pivotColumn()})
+                    ->map(fn (CollaboratorPermission $permission): string => $permission->value)
+                    ->values()
+                    ->all()],
+            )->all(),
             'visibility_label' => $file->visibility->label(),
             'sharing_label' => $this->sharingLabel(
                 $file->visibility,

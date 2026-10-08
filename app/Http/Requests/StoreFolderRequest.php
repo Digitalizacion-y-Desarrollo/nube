@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\FileVisibility;
 use App\Http\Requests\Concerns\ValidatesCollaborators;
 use App\Models\Folder;
+use App\Services\Folders\SharedFolderInheritanceService;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
@@ -90,6 +91,23 @@ class StoreFolderRequest extends FormRequest
 
         if (! $this->has('visibility')) {
             $this->merge(['visibility' => FileVisibility::Private->value]);
+        }
+
+        $parentId = $this->input('parent_id');
+        $parent = is_string($parentId) && Str::isUuid($parentId) ? Folder::query()->find($parentId) : null;
+        if (($root = app(SharedFolderInheritanceService::class)->rootFor($parent)) !== null) {
+            $collaborators = $root->collaborators()->pluck('id')->reject(fn (int $id): bool => $id === $this->user()?->id)->values()->all();
+            if ($root->visibility === FileVisibility::Collaborative && $collaborators === [] && $root->owner_id !== $this->user()?->id) {
+                $collaborators = [$root->owner_id];
+            }
+            $this->merge([
+                'visibility' => $root->visibility->value,
+                'collaboration_scope' => 'selected',
+                // A private shared root can legitimately have only the current
+                // collaborator. Null keeps the generic picker validation out
+                // of this inherited, server-controlled request.
+                'collaborators' => $collaborators === [] ? null : $collaborators,
+            ]);
         }
 
         $this->prepareCollaborationForValidation();

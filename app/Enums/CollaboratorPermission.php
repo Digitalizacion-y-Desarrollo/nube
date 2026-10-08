@@ -6,6 +6,7 @@ enum CollaboratorPermission: string
 {
     case View = 'view';
     case Download = 'download';
+    case CreateFolder = 'create_folder';
     case Rename = 'rename';
     case Move = 'move';
     case Delete = 'delete';
@@ -15,6 +16,7 @@ enum CollaboratorPermission: string
         return match ($this) {
             self::View => 'Ver',
             self::Download => 'Descargar',
+            self::CreateFolder => 'Crear carpetas',
             self::Rename => 'Renombrar',
             self::Move => 'Mover',
             self::Delete => 'Eliminar',

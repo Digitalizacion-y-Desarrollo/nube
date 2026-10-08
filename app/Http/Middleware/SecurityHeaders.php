@@ -17,10 +17,10 @@ class SecurityHeaders
         $nonce = Vite::cspNonce();
         $isFramedPreview = $request->routeIs('files.preview', 'admin.files.preview');
         $localAssetSources = app()->isLocal()
-            ? ' http://localhost:5173 http://127.0.0.1:5173'
+            ? ' http://localhost:5173 http://127.0.0.1:5173 http://[::1]:5173'
             : '';
         $localConnectionSources = app()->isLocal()
-            ? ' http://localhost:5173 http://127.0.0.1:5173 ws://localhost:5173 ws://127.0.0.1:5173'
+            ? ' http://localhost:5173 http://127.0.0.1:5173 http://[::1]:5173 ws://localhost:5173 ws://127.0.0.1:5173 ws://[::1]:5173'
             : '';
         $policy = implode('; ', [
             "default-src 'self'",

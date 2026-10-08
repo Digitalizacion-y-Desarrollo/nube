@@ -6,6 +6,7 @@ use App\Enums\CollaborationScope;
 use App\Enums\FileVisibility;
 use App\Models\Concerns\HasCollaboratorPermissions;
 use App\Models\Concerns\RecordsDeletedBy;
+use App\Services\Folders\SharedFolderInheritanceService;
 use Database\Factories\FileFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -68,12 +69,18 @@ class File extends Model
             ->withPivot([
                 'can_view',
                 'can_download',
+                'can_create_folder',
                 'can_rename',
                 'can_move',
                 'can_delete',
                 'created_at',
                 'expires_at',
             ]);
+    }
+
+    public function sharedRoot(): ?Folder
+    {
+        return app(SharedFolderInheritanceService::class)->rootForFile($this);
     }
 
     /**

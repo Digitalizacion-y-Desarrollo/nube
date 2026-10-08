@@ -11,6 +11,7 @@ use App\Notifications\DepartmentFileUploadedNotification;
 use App\Notifications\FileSharedNotification;
 use App\Notifications\PublicFileUploadedNotification;
 use App\Services\Sharing\CollaboratorPermissionService;
+use App\Services\Folders\SharedFolderInheritanceService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
@@ -27,6 +28,7 @@ class FileStorageService
 {
     public function __construct(
         private readonly CollaboratorPermissionService $collaboratorPermissions,
+        private readonly SharedFolderInheritanceService $inheritance,
     ) {}
 
     public function upload(
@@ -40,6 +42,14 @@ class FileStorageService
         ?string $displayName = null,
         ?string $expiresAt = null,
     ): File {
+        $sharedRoot = $this->inheritance->rootFor($folder);
+        if ($sharedRoot !== null) {
+            $visibility = $sharedRoot->visibility;
+            $collaborationScope = CollaborationScope::Selected;
+            $collaboratorIds = [];
+            $permissionsByUser = [];
+            $expiresAt = null;
+        }
         $extension = strtolower($upload->getClientOriginalExtension());
         $storedName = Str::uuid()->toString().($extension === '' ? '' : ".{$extension}");
         $departmentId = $folder?->department_id ?? $owner->department_id;
@@ -70,6 +80,7 @@ class FileStorageService
                 $departmentId,
                 $displayName,
                 $expiresAt,
+                $sharedRoot,
             ): File {
                 $safeOriginalName = $this->safeOriginalName($upload);
 
@@ -104,6 +115,10 @@ class FileStorageService
                             )
                             : [],
                 );
+
+                if ($sharedRoot !== null) {
+                    $this->inheritance->syncFile($file, $sharedRoot);
+                }
 
                 return $file;
             });

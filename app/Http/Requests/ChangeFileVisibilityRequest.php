@@ -40,7 +40,10 @@ class ChangeFileVisibilityRequest extends FormRequest
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     $file = $this->route('file');
                     if ($file instanceof File && $value === $file->visibility?->value
-                        && ! ($value === FileVisibility::Private->value && $this->boolean('share_privately'))) {
+                        && ! in_array($value, [
+                            FileVisibility::Collaborative->value,
+                            FileVisibility::Private->value,
+                        ], true)) {
                         $fail('Selecciona una clasificación diferente o activa el uso compartido privado.');
                     }
                 },

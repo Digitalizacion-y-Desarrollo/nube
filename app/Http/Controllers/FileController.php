@@ -13,6 +13,7 @@ use App\Models\AuditLog;
 use App\Models\File;
 use App\Models\Folder;
 use App\Services\Files\FileStorageService;
+use App\Services\Folders\SharedFolderInheritanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class FileController extends Controller
 {
     public function __construct(
         private readonly FileStorageService $storage,
+        private readonly SharedFolderInheritanceService $inheritance,
     ) {}
 
     public function store(UploadFileRequest $request): RedirectResponse|JsonResponse
@@ -35,6 +37,11 @@ class FileController extends Controller
         $collaborationScope = ($visibility === FileVisibility::Collaborative || $request->boolean('share_privately'))
             ? CollaborationScope::from($request->validated('collaboration_scope'))
             : null;
+
+        if (($root = $this->inheritance->rootFor($folder)) !== null) {
+            $visibility = $root->visibility;
+            $collaborationScope = CollaborationScope::Selected;
+        }
 
         $this->authorize('upload', [File::class, $folder, $visibility]);
 

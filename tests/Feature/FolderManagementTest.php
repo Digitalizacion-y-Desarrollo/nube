@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\FileVisibility;
+use App\Enums\CollaborationScope;
+use App\Services\Folders\SharedFolderInheritanceService;
+use App\Services\Sharing\CollaboratorPermissionService;
 use App\Models\AuditLog;
 use App\Models\File;
 use App\Models\Folder;
@@ -15,6 +18,86 @@ use Tests\TestCase;
 class FolderManagementTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_shared_root_permissions_are_propagated_to_descendants_and_files(): void
+    {
+        $owner = User::factory()->create();
+        $first = User::factory()->create();
+        $second = User::factory()->create();
+        $root = $this->folder($owner, 'Expedientes compartidos');
+        $child = $this->folder($owner, '2026', $root, '/Expedientes compartidos/2026');
+        $file = File::factory()->create([
+            'owner_id' => $second->id,
+            'department_id' => $owner->department_id,
+            'folder_id' => $child->id,
+            'visibility' => FileVisibility::Private,
+        ]);
+
+        $root->update([
+            'collaboration_scope' => CollaborationScope::Selected,
+        ]);
+        $root->collaborators()->sync(app(CollaboratorPermissionService::class)->pivotData([$first->id]));
+        app(SharedFolderInheritanceService::class)->propagate($root);
+
+        $this->assertSame(CollaborationScope::Selected, $child->fresh()->collaboration_scope);
+        $this->assertSame(FileVisibility::Private, $file->fresh()->visibility);
+        $this->assertTrue($child->fresh()->collaboratorCan($first, \App\Enums\CollaboratorPermission::View));
+        $this->assertTrue($file->fresh()->collaboratorCan($first, \App\Enums\CollaboratorPermission::View));
+
+        $root->collaborators()->sync(app(CollaboratorPermissionService::class)->pivotData([$second->id]));
+        app(SharedFolderInheritanceService::class)->propagate($root);
+
+        $this->assertFalse($child->fresh()->collaborators()->whereKey($first->id)->exists());
+        $this->assertFalse($file->fresh()->collaborators()->whereKey($first->id)->exists());
+        $this->assertTrue($file->fresh()->collaboratorCan($second, \App\Enums\CollaboratorPermission::View));
+    }
+
+    public function test_authorized_collaborator_can_create_a_subfolder_without_global_creation_permission(): void
+    {
+        $owner = User::factory()->create();
+        $collaborator = User::factory()->create();
+        $root = $this->folder($owner, 'Raíz compartida');
+        $root->update(['collaboration_scope' => CollaborationScope::Selected]);
+        $root->collaborators()->sync(
+            app(CollaboratorPermissionService::class)->pivotData([$collaborator->id], [
+                $collaborator->id => ['view', 'download', 'create_folder'],
+            ]),
+        );
+
+        $this->authenticated($collaborator, [])
+            ->post(route('folders.store'), [
+                'name' => 'Carpeta del invitado',
+                'parent_id' => $root->id,
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status');
+
+        $folder = Folder::query()->where('name', 'Carpeta del invitado')->firstOrFail();
+        $this->assertSame($collaborator->id, $folder->owner_id);
+        $this->assertSame($root->id, $folder->parent_id);
+        $this->assertSame(CollaborationScope::Selected, $folder->collaboration_scope);
+        $this->assertTrue($folder->collaboratorCan($collaborator, \App\Enums\CollaboratorPermission::View));
+    }
+
+    public function test_shared_folder_shows_creation_actions_to_an_authorized_collaborator(): void
+    {
+        $owner = User::factory()->create();
+        $collaborator = User::factory()->create();
+        $root = $this->folder($owner, 'Raíz visible');
+        $root->update(['collaboration_scope' => CollaborationScope::Selected]);
+        $root->collaborators()->sync(
+            app(CollaboratorPermissionService::class)->pivotData([$collaborator->id], [
+                $collaborator->id => ['view', 'download', 'create_folder'],
+            ]),
+        );
+
+        $this->authenticated($collaborator, ['nube_departamento_ver'])
+            ->get(route('folders.shared.show', $root))
+            ->assertOk()
+            ->assertSee('Agregar archivo')
+            ->assertSee('Nueva subcarpeta');
+    }
 
     public function test_user_can_navigate_nested_private_folders_with_breadcrumbs(): void
     {

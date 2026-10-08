@@ -7,6 +7,7 @@ use App\Enums\CollaboratorPermission;
 use App\Enums\FileVisibility;
 use App\Models\Folder;
 use App\Models\User;
+use App\Services\Folders\SharedFolderInheritanceService;
 
 class FolderPolicy
 {
@@ -14,6 +15,11 @@ class FolderPolicy
     {
         if ($folder->trashed()) {
             return false;
+        }
+
+        if (($root = $this->inheritance()->rootFor($folder)) !== null) {
+            return $this->inheritance()->canAccess($user, $root)
+                && $this->can($user, $this->permissionFor($user, $root, 'ver'));
         }
 
         return match ($folder->visibility) {
@@ -32,6 +38,12 @@ class FolderPolicy
         ?Folder $parent = null,
         FileVisibility $visibility = FileVisibility::Private,
     ): bool {
+        if (($root = $this->inheritance()->rootFor($parent)) !== null) {
+            return ! $parent->trashed()
+                && $this->inheritance()->canAccess($user, $root)
+                && ($root->owner_id === $user->id || $this->isAreaAdmin($user)
+                    || $root->collaboratorCan($user, CollaboratorPermission::CreateFolder));
+        }
         if (! $this->can($user, $this->permission($visibility, 'crear_carpeta'))) {
             return false;
         }
@@ -75,6 +87,10 @@ class FolderPolicy
         Folder $folder,
         ?Folder $destination = null,
     ): bool {
+        if ($this->inheritance()->rootFor($folder) !== null
+            || $this->inheritance()->rootFor($destination) !== null) {
+            return false;
+        }
         if (! $this->can($user, $this->permissionFor($user, $folder, 'mover'))
             || ! $this->canManage($user, $folder, CollaboratorPermission::Move)) {
             return false;
@@ -96,9 +112,20 @@ class FolderPolicy
         Folder $folder,
         FileVisibility $visibility,
     ): bool {
+        $isSharedRootPermissionUpdate = $folder->collaboration_scope === CollaborationScope::Selected
+            && ($root = $this->inheritance()->rootFor($folder)) !== null
+            && $root->id === $folder->id;
+
+        if ($isSharedRootPermissionUpdate && $folder->visibility === $visibility) {
+            return $this->canClassify($user, $folder);
+        }
+
         return ($folder->visibility !== $visibility
-                || ($visibility === FileVisibility::Private
-                    && $folder->owner_id === $user->id))
+                || (in_array($visibility, [
+                    FileVisibility::Private,
+                    FileVisibility::Collaborative,
+                ], true) && $this->canUpdateSharing($user, $folder))
+                || $isSharedRootPermissionUpdate)
             && $this->canClassify($user, $folder)
             && $this->can($user, $this->permission($folder->visibility, 'publicar'));
     }
@@ -125,6 +152,12 @@ class FolderPolicy
     ): bool {
         if ($folder->trashed()) {
             return false;
+        }
+
+        if (($root = $this->inheritance()->rootFor($folder)) !== null) {
+            return $this->inheritance()->canAccess($user, $root)
+                && ($root->owner_id === $user->id || $this->isAreaAdmin($user)
+                    || $root->collaboratorCan($user, $permission));
         }
 
         if ($folder->visibility === FileVisibility::Collaborative) {
@@ -154,6 +187,10 @@ class FolderPolicy
             return false;
         }
 
+        if ($this->inheritance()->isInherited($folder)) {
+            return false;
+        }
+
         if ($folder->visibility === FileVisibility::Collaborative) {
             return $folder->department_id === $user->department_id
                 && ($folder->owner_id === $user->id || $this->isAreaAdmin($user));
@@ -165,6 +202,11 @@ class FolderPolicy
         }
 
         return $folder->owner_id === $user->id;
+    }
+
+    private function canUpdateSharing(User $user, Folder $folder): bool
+    {
+        return $folder->owner_id === $user->id || $this->isAreaAdmin($user);
     }
 
     private function hasCollaborativeAccess(User $user, Folder $folder): bool
@@ -242,5 +284,10 @@ class FolderPolicy
     {
         return $user->hasRole('superuser')
             && $user->hasPermission('nube_administracion_administrar');
+    }
+
+    private function inheritance(): SharedFolderInheritanceService
+    {
+        return app(SharedFolderInheritanceService::class);
     }
 }

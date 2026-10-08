@@ -2,6 +2,7 @@
     $listedUserName = trim("{$listedUser->name} {$listedUser->last_name}");
 @endphp
 
+
 <x-layouts.admin :title="$listedUserName" :user="$user">
     <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>

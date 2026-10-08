@@ -96,14 +96,21 @@
                         @endif
                     </label>
 
+                    @if ($inheritsSharedPermissions)
+                        <p class="rounded-xl border border-line bg-surface-alt p-4 text-sm leading-6 text-muted">
+                            Este archivo heredará automáticamente las personas autorizadas y permisos de la carpeta raíz compartida.
+                        </p>
+                    @else
                     @include('folders.partials.collaboration-fields', [
                         'contextId' => null,
                         'pickerId' => 'upload-collaborators',
                         'defaultCollaborationScope' => $defaultUploadCollaborationScope,
                         'defaultCollaborators' => $defaultUploadCollaborators,
                         'defaultCollaboratorPermissions' => $defaultUploadCollaboratorPermissions,
+                        'allowFolderCreation' => false,
                         'errorBag' => $errors->getBag('uploadFile'),
                     ])
+                    @endif
 
                     @if ($errors->uploadFile->has('file'))
                         <x-ui.alert>{{ $errors->uploadFile->first('file') }}</x-ui.alert>
@@ -183,11 +190,17 @@
                         </span>
                     </div>
 
+                    @if ($inheritsSharedPermissions)
+                        <p class="rounded-xl border border-line bg-surface-alt p-4 text-sm leading-6 text-muted">
+                            Esta subcarpeta heredará automáticamente las personas autorizadas y permisos de la carpeta raíz compartida.
+                        </p>
+                    @else
                     @include('folders.partials.collaboration-fields', [
                         'contextId' => null,
                         'pickerId' => 'folder-collaborators',
                         'errorBag' => $errors->getBag('createFolder'),
                     ])
+                    @endif
 
                     @if ($errors->createFolder->has('parent_id'))
                         <x-ui.alert>{{ $errors->createFolder->first('parent_id') }}</x-ui.alert>
@@ -321,17 +334,16 @@
                         <label class="block">
                             <span class="mb-1.5 block text-[13px] font-semibold text-muted">Nueva clasificación</span>
                             <select name="visibility" data-sharing-visibility required class="h-[46px] w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
-                                @if ($folderItem['visibility'] === 'private')
-                                    <option value="private" @selected(old('folder_context') === $folderItem['id'] && old('visibility', 'private') === 'private')>Privado</option>
-                                @endif
+                                @php($canKeepFolderVisibility = collect($folderItem['visibility_options'])->contains('value', $folderItem['visibility']))
                                 <option
-                                    value=""
-                                    disabled
-                                    @selected(! (old('folder_context') === $folderItem['id'] && old('visibility')))
+                                    value="{{ $canKeepFolderVisibility ? $folderItem['visibility'] : '' }}"
+                                    @disabled(! $canKeepFolderVisibility)
+                                    @selected($canKeepFolderVisibility || ! (old('folder_context') === $folderItem['id'] && old('visibility')))
                                 >
                                     {{ $folderItem['visibility_label'] }} (actual)
                                 </option>
                                 @foreach ($folderItem['visibility_options'] as $visibilityOption)
+                                    @continue($visibilityOption['value'] === $folderItem['visibility'])
                                     <option value="{{ $visibilityOption['value'] }}" @selected(old('folder_context') === $folderItem['id'] && old('visibility') === $visibilityOption['value'])>
                                         {{ $visibilityOption['label'] }}
                                     </option>
@@ -344,6 +356,9 @@
                             'contextField' => 'folder_context',
                             'pickerId' => 'folder-visibility-collaborators-'.$folderItem['id'],
                             'defaultPrivateSharing' => $folderItem['is_private_shared'],
+                            'defaultCollaborationScope' => $folderItem['collaboration_scope'],
+                            'defaultCollaborators' => $folderItem['collaborator_ids'],
+                            'defaultCollaboratorPermissions' => $folderItem['collaborator_permissions'],
                             'errorBag' => $errors->getBag('changeFolderVisibility'),
                         ])
 
@@ -460,17 +475,16 @@
                         <label class="block">
                             <span class="mb-1.5 block text-[13px] font-semibold text-muted">Nueva clasificación</span>
                             <select name="visibility" data-sharing-visibility required class="h-[46px] w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand focus:ring-3 focus:ring-brand/10">
-                                @if ($fileItem['visibility'] === 'private')
-                                    <option value="private" @selected(old('file_context') === $fileItem['id'] && old('visibility', 'private') === 'private')>Privado</option>
-                                @endif
+                                @php($canKeepFileVisibility = collect($fileItem['visibility_options'])->contains('value', $fileItem['visibility']))
                                 <option
-                                    value=""
-                                    disabled
-                                    @selected(! (old('file_context') === $fileItem['id'] && old('visibility')))
+                                    value="{{ $canKeepFileVisibility ? $fileItem['visibility'] : '' }}"
+                                    @disabled(! $canKeepFileVisibility)
+                                    @selected($canKeepFileVisibility || ! (old('file_context') === $fileItem['id'] && old('visibility')))
                                 >
                                     {{ $fileItem['visibility_label'] }} (actual)
                                 </option>
                                 @foreach ($fileItem['visibility_options'] as $visibilityOption)
+                                    @continue($visibilityOption['value'] === $fileItem['visibility'])
                                     <option value="{{ $visibilityOption['value'] }}" @selected(old('file_context') === $fileItem['id'] && old('visibility') === $visibilityOption['value'])>
                                         {{ $visibilityOption['label'] }}
                                     </option>
@@ -482,6 +496,10 @@
                             'contextId' => $fileItem['id'],
                             'pickerId' => 'file-visibility-collaborators-'.$fileItem['id'],
                             'defaultPrivateSharing' => $fileItem['is_private_shared'],
+                            'defaultCollaborationScope' => $fileItem['collaboration_scope'],
+                            'defaultCollaborators' => $fileItem['collaborator_ids'],
+                            'defaultCollaboratorPermissions' => $fileItem['collaborator_permissions'],
+                            'allowFolderCreation' => false,
                             'errorBag' => $errors->getBag('changeVisibility'),
                         ])
 
@@ -842,6 +860,7 @@
                             </x-ui.button>
                         @endif
                         @if ($canCreateFolder)
+                       
                             <x-ui.button variant="secondary" data-modal-open="folder-modal">
                                 <x-ui.icon name="folder-plus" :size="18" alt="" />
                                 <span>{{ $currentFolder ? 'Nueva subcarpeta' : 'Crear carpeta' }}</span>

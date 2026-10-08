@@ -7,6 +7,7 @@ use App\Enums\FileVisibility;
 use App\Http\Requests\Concerns\ValidatesCollaborators;
 use App\Models\File;
 use App\Models\Folder;
+use App\Services\Folders\SharedFolderInheritanceService;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
@@ -123,6 +124,18 @@ class UploadFileRequest extends FormRequest
         $folder = is_string($folderId) && Str::isUuid($folderId)
             ? Folder::query()->with('collaborators:id')->find($folderId)
             : null;
+
+        if (($root = app(SharedFolderInheritanceService::class)->rootFor($folder)) !== null) {
+            $collaborators = $root->collaborators()->pluck('id')->reject(fn (int $id): bool => $id === $this->user()?->id)->values()->all();
+            if ($root->visibility === FileVisibility::Collaborative && $collaborators === [] && $root->owner_id !== $this->user()?->id) {
+                $collaborators = [$root->owner_id];
+            }
+            $this->merge([
+                'visibility' => $root->visibility->value,
+                'collaboration_scope' => 'selected',
+                'collaborators' => $collaborators === [] ? null : $collaborators,
+            ]);
+        }
 
         if (! $this->has('visibility')) {
             $this->merge([

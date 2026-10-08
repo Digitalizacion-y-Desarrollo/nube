@@ -22,6 +22,7 @@
     $privateAccessSelected = $usesOldContext
         ? (bool) old('share_privately')
         : ($defaultPrivateSharing ?? false);
+    $allowFolderCreation = $allowFolderCreation ?? true;
 @endphp
 
 <div data-private-sharing-toggle class="hidden rounded-xl border border-line bg-surface-alt p-4">
@@ -184,6 +185,7 @@
                                     </span>
                                     @foreach (\App\Enums\CollaboratorPermission::cases() as $permission)
                                         @continue($permission === \App\Enums\CollaboratorPermission::View)
+                                        @continue($permission === \App\Enums\CollaboratorPermission::CreateFolder && ! $allowFolderCreation)
                                         <label class="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ink">
                                             <input
                                                 type="checkbox"

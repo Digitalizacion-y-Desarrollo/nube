@@ -59,6 +59,47 @@ class EpicSevenInterfaceTest extends TestCase
             ->assertDontSee('Contrato_2025_Final.docx');
     }
 
+    public function test_dashboard_recent_items_exclude_resources_the_user_cannot_view(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create([
+            'department_id' => $user->department_id,
+        ]);
+
+        Folder::factory()->create([
+            'owner_id' => $otherUser->id,
+            'department_id' => $otherUser->department_id,
+            'name' => 'Carpeta restringida',
+            'visibility' => FileVisibility::Private,
+        ]);
+        File::factory()->create([
+            'owner_id' => $otherUser->id,
+            'department_id' => $otherUser->department_id,
+            'display_name' => 'Archivo privado restringido.pdf',
+            'visibility' => FileVisibility::Private,
+        ]);
+        File::factory()->create([
+            'owner_id' => $otherUser->id,
+            'department_id' => $otherUser->department_id,
+            'display_name' => 'Archivo colaborativo restringido.pdf',
+            'visibility' => FileVisibility::Collaborative,
+        ]);
+        File::factory()->create([
+            'owner_id' => $otherUser->id,
+            'department_id' => $otherUser->department_id,
+            'display_name' => 'Archivo público restringido.pdf',
+            'visibility' => FileVisibility::Public,
+        ]);
+
+        $this->authenticated($user, ['nube_inicio_ver'])
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('Carpeta restringida')
+            ->assertDontSee('Archivo privado restringido.pdf')
+            ->assertDontSee('Archivo colaborativo restringido.pdf')
+            ->assertDontSee('Archivo público restringido.pdf');
+    }
+
     public function test_explorer_searches_and_filters_by_type_owner_visibility_and_date(): void
     {
         $user = User::factory()->create();

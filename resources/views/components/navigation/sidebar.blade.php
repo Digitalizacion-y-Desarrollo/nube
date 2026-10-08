@@ -56,7 +56,7 @@
                     ])
                     @if (request()->routeIs($item['pattern'] ?? $item['route'])) aria-current="page" @endif
                 >
-                    <x-ui.icon :name="$item['icon']" :size="20" alt="" />
+                    <x-ui.icon :name="$item['icon']" :size="20" alt="" :class="$item['route'] === 'dashboard' ? 'brightness-0' : null" />
                     <span>{{ $item['label'] }}</span>
                 </a>
             @endforeach
@@ -110,7 +110,7 @@
                     'bg-brand font-semibold text-white' => request()->routeIs($item['pattern'] ?? $item['route']),
                     'font-medium text-ink' => ! request()->routeIs($item['pattern'] ?? $item['route']),
                 ]) @if (request()->routeIs($item['pattern'] ?? $item['route'])) aria-current="page" @endif>
-                    <x-ui.icon :name="$item['icon']" :size="20" alt="" />
+                    <x-ui.icon :name="$item['icon']" :size="20" alt="" :class="$item['route'] === 'dashboard' ? 'brightness-0' : null" />
                     <span>{{ $item['label'] }}</span>
                 </a>
             @endforeach
