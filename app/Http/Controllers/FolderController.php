@@ -529,6 +529,13 @@ class FolderController extends Controller
         $destinationFolders = Folder::query()
             ->where(function (Builder $folders) use ($request): void {
                 $folders->where('owner_id', $request->user()->id)
+                    ->orWhere(function (Builder $sharedPrivate) use ($request): void {
+                        $sharedPrivate
+                            ->where('visibility', FileVisibility::Private)
+                            ->where('collaboration_scope', CollaborationScope::Selected)
+                            ->whereHas('collaborators', fn (Builder $users): Builder => $users
+                                ->whereKey($request->user()->id));
+                    })
                     ->orWhere(function (Builder $collaborative) use ($request): void {
                         $collaborative
                             ->where('visibility', FileVisibility::Collaborative)

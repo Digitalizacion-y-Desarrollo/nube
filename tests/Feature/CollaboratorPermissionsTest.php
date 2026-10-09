@@ -264,6 +264,43 @@ class CollaboratorPermissionsTest extends TestCase
         ]);
     }
 
+    public function test_collaborator_uploads_into_the_private_shared_folder(): void
+    {
+        Storage::fake('nube');
+        $department = Department::factory()->create();
+        $owner = User::factory()->create(['department_id' => $department->id]);
+        $collaborator = User::factory()->create(['department_id' => $department->id]);
+        $folder = Folder::factory()->create([
+            'owner_id' => $owner->id,
+            'department_id' => $department->id,
+            'name' => 'Expediente compartido',
+            'visibility' => FileVisibility::Private,
+            'collaboration_scope' => CollaborationScope::Selected,
+        ]);
+        $folder->collaborators()->sync([
+            $collaborator->id => $this->pivot(['view', 'download']),
+        ]);
+
+        $this->authenticated($collaborator, ['nube_departamento_ver'])
+            ->get(route('folders.shared.show', $folder))
+            ->assertOk()
+            ->assertSee('value="'.$folder->id.'"', false);
+
+        $this->post(route('files.store'), [
+            'file' => UploadedFile::fake()->create('evidencia.pdf', 10, 'application/pdf'),
+            'folder_id' => $folder->id,
+            'visibility' => FileVisibility::Private->value,
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $file = File::query()->where('display_name', 'evidencia.pdf')->firstOrFail();
+        $this->assertSame($folder->id, $file->folder_id);
+        $this->assertSame($collaborator->id, $file->owner_id);
+        $this->assertSame(FileVisibility::Private, $file->visibility);
+        $this->assertSame(CollaborationScope::Selected, $file->collaboration_scope);
+    }
+
     /**
      * @param  list<string>  $permissions
      * @return array<string, bool|Carbon>

@@ -5,7 +5,11 @@ final de cada sesión de trabajo y consultarse antes de iniciar una nueva.
 
 ## Última actualización
 
-- Fecha: 24 de agosto de 2026.
+- Fecha: 9 de octubre de 2026.
+- Corrección reciente: la carga desde una carpeta privada compartida ahora
+  conserva esa carpeta como destino para sus colaboradores; también se
+  normalizan listas de colaboradores vacías durante la carga.
+- Prueba agregada: `test_collaborator_uploads_into_the_private_shared_folder`.
 - Estado general: Épicos 01 a 08 y 11 a 19 implementados y en Revisión y QA;
   Épico 20 con su parte automatizada y documental completada; Épico 09 en
   Terminado y Épico 10 en Backlog.

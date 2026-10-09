@@ -79,7 +79,9 @@
 
     @php
         $departamento = session('access.department.parent.nombre');
+
         $area = session('access.department.children.0.nombre');
+       
     @endphp
 
     <div>
@@ -88,7 +90,7 @@
                 <img src="{{ $user['avatar'] ?? asset('assets/figma/avatar.png') }}" alt="Foto de perfil de {{ $user['name'] ?? 'usuario' }}" width="40" height="40" class="size-10 shrink-0 rounded-full object-cover ring-1 ring-line">
                 <span class="min-w-0 flex-1">
                     <span class="block truncate text-sm font-semibold">{{ $user['name'] ?? 'Carlos Martínez' }}</span>
-                    <span class="block truncate text-xs text-muted">{{ $area ?? $departamento  || 'Sin departamento' }}</span>
+                    <span class="block truncate text-xs text-muted">{{ $departamento  }}</span>
                 </span>
             </a>
             <form action="{{ route('logout') }}" method="POST">
