@@ -38,7 +38,12 @@ class FilePolicy
     public function view(User $user, File $file): bool
     {
         return $this->canAccess($user, $file)
-            && $this->can($user, $this->permissionFor($user, $file, 'ver'));
+            && $this->can(
+                $user,
+                $file->area_external_id === null
+                    ? $this->permissionFor($user, $file, 'ver')
+                    : 'nube_area_ver',
+            );
     }
 
     public function download(User $user, File $file): bool
@@ -202,6 +207,10 @@ class FilePolicy
         }
 
         if ($file->visibility === FileVisibility::Collaborative) {
+            if ($file->area_external_id !== null && ! $this->isInArea($file->area_external_id)) {
+                return $file->collaboration_scope === CollaborationScope::Selected
+                    && $file->collaboratorCan($user, $permission);
+            }
             return ($file->department_id === $user->department_id
                     && ($file->owner_id === $user->id || $this->isAreaAdmin($user)))
                 || ($file->collaboration_scope === CollaborationScope::Selected
@@ -295,11 +304,25 @@ class FilePolicy
 
     private function hasCollaborativeAccess(User $user, File $file): bool
     {
+        if ($file->area_external_id !== null) {
+            return ($this->isInArea($file->area_external_id) && $this->can($user, 'nube_area_ver'))
+                || ($file->collaboration_scope === CollaborationScope::Selected
+                    && $file->collaboratorCan($user, CollaboratorPermission::View));
+        }
+
         return $this->canUseCollaborativePermission(
             $user,
             $file,
             CollaboratorPermission::View,
         );
+    }
+
+    private function isInArea(string $areaExternalId): bool
+    {
+        $currentArea = session('access.department.children.0.id');
+
+        return (is_string($currentArea) || is_int($currentArea))
+            && (string) $currentArea === $areaExternalId;
     }
 
     private function canUseCollaborativePermission(

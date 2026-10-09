@@ -41,6 +41,7 @@ class FileStorageService
         array $permissionsByUser = [],
         ?string $displayName = null,
         ?string $expiresAt = null,
+        ?string $areaExternalId = null,
     ): File {
         $sharedRoot = $this->inheritance->rootFor($folder);
         if ($sharedRoot !== null) {
@@ -53,6 +54,7 @@ class FileStorageService
         $extension = strtolower($upload->getClientOriginalExtension());
         $storedName = Str::uuid()->toString().($extension === '' ? '' : ".{$extension}");
         $departmentId = $folder?->department_id ?? $owner->department_id;
+        $areaExternalId ??= $folder?->area_external_id;
         $directory = $this->directoryFor(
             $owner,
             $folder,
@@ -81,6 +83,7 @@ class FileStorageService
                 $displayName,
                 $expiresAt,
                 $sharedRoot,
+                $areaExternalId,
             ): File {
                 $safeOriginalName = $this->safeOriginalName($upload);
 
@@ -88,6 +91,7 @@ class FileStorageService
                     'folder_id' => $folder?->id,
                     'owner_id' => $owner->id,
                     'department_id' => $departmentId,
+                    'area_external_id' => $areaExternalId,
                     'original_name' => $safeOriginalName,
                     'display_name' => $displayName ?? $safeOriginalName,
                     'stored_name' => $storedName,

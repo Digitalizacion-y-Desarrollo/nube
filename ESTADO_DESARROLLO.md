@@ -932,6 +932,11 @@ Las migraciones `2026_08_13_000001_add_deleted_by_to_files_and_folders` y
 local; cualquier otro entorno debe ejecutar `php artisan migrate` antes de abrir
 la papelera global o el perfil de usuario.
 
+La migración `2026_10_09_000001_add_area_external_id_to_files_and_folders`
+agrega el alcance de **Mi área** a carpetas y archivos. La sección requiere el
+permiso `nube_area_ver` y que Accesos envíe el primer `departamento_hijo`; antes
+de desplegarla se debe ejecutar `php artisan migrate`.
+
 La migración `2026_08_24_000001_add_expiration_to_collaborator_pivots` agrega
 `expires_at` a los colaboradores de archivos y carpetas. El uso compartido
 seleccionado puede mantenerse privado: el propietario lo conserva en **Mis

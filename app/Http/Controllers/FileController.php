@@ -34,9 +34,22 @@ class FileController extends Controller
             ? null
             : Folder::query()->findOrFail($request->validated('folder_id'));
         $visibility = FileVisibility::from($request->validated('visibility'));
+        $areaExternalId = null;
+        if ($request->input('section') === 'area') {
+            $areaId = $request->session()->get('access.department.children.0.id');
+            abort_unless((is_string($areaId) || is_int($areaId)) && $request->user()->hasPermission('nube_area_ver'), 403);
+            $areaExternalId = (string) $areaId;
+            $visibility = FileVisibility::Collaborative;
+        }
         $collaborationScope = ($visibility === FileVisibility::Collaborative || $request->boolean('share_privately'))
             ? CollaborationScope::from($request->validated('collaboration_scope'))
             : null;
+
+        if ($collaborationScope === CollaborationScope::Area) {
+            $areaId = $request->session()->get('access.department.children.0.id');
+            abort_unless(is_string($areaId) || is_int($areaId), 422);
+            $areaExternalId = (string) $areaId;
+        }
 
         if (($root = $this->inheritance->rootFor($folder)) !== null) {
             $visibility = $root->visibility;
@@ -59,6 +72,7 @@ class FileController extends Controller
                 $request->validated('collaborator_permissions', []),
                 $displayName,
                 $request->validated('sharing_expires_at'),
+                $areaExternalId,
             );
 
             if ($collaborationScope === CollaborationScope::Selected) {

@@ -49,6 +49,9 @@ Route::middleware('access.session')->group(function (): void {
         ->name('files.store');
     Route::post('/mis-archivos/elementos-arrastrados', DroppedUploadController::class)
         ->name('files.drop-store');
+    Route::post('/mi-area/elementos-arrastrados', DroppedUploadController::class)
+        ->middleware('access.permission:nube_area_ver')
+        ->name('area.drop-store');
     Route::get('/mis-archivos/archivos/{file}/descargar', [FileController::class, 'download'])
         ->name('files.download');
     Route::get('/mis-archivos/archivos/{file}/vista-previa', [FileController::class, 'preview'])
@@ -67,6 +70,12 @@ Route::middleware('access.session')->group(function (): void {
     Route::get('/mi-departamento/{folder}', [FolderController::class, 'department'])
         ->middleware('access.permission:nube_departamento_ver')
         ->name('folders.department.show');
+    Route::get('/mi-area', [FolderController::class, 'area'])
+        ->middleware('access.permission:nube_area_ver')
+        ->name('folders.area');
+    Route::get('/mi-area/{folder}', [FolderController::class, 'area'])
+        ->middleware('access.permission:nube_area_ver')
+        ->name('folders.area.show');
     Route::get('/compartidos', [FolderController::class, 'shared'])
         ->middleware('access.permission:nube_departamento_ver')
         ->name('folders.shared');

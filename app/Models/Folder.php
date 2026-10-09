@@ -25,6 +25,7 @@ class Folder extends Model
         'parent_id',
         'owner_id',
         'department_id',
+        'area_external_id',
         'name',
         'visibility',
         'collaboration_scope',

@@ -19,6 +19,7 @@
         : $defaultCollaborationScope;
     $departmentAudienceLabel = $departmentAudienceLabel ?? 'Todo mi departamento';
     $departmentPeopleLabel = $departmentPeopleLabel ?? 'Personas activas de la organización';
+    $hasArea = filled(session('access.department.children.0.id'));
     $privateAccessSelected = $usesOldContext
         ? (bool) old('share_privately')
         : ($defaultPrivateSharing ?? false);
@@ -54,6 +55,11 @@
             <option value="department" @selected($selectedCollaborationScope === 'department')>
                 Departamento completo
             </option>
+            @if ($hasArea)
+                <option value="area" @selected($selectedCollaborationScope === 'area')>
+                    Toda mi área
+                </option>
+            @endif
             <option value="selected" @selected($selectedCollaborationScope === 'selected')>
                 Personas específicas
             </option>

@@ -1139,6 +1139,8 @@ if (dropUpload) {
     const statusElements = Array.from(document.querySelectorAll('[data-drop-upload-status]'));
     const countElements = Array.from(document.querySelectorAll('[data-drop-upload-count]'));
     const progressElements = Array.from(document.querySelectorAll('[data-drop-upload-progress]'));
+    const dropIdleHints = Array.from(document.querySelectorAll('[data-drop-upload-idle]'));
+    const dropActiveHints = Array.from(document.querySelectorAll('[data-drop-upload-active]'));
     const formDropTarget = document.querySelector('[data-drop-upload-form-target]');
     const uploadModal = formDropTarget?.closest('[data-modal]');
     const canCreateFolders = dropUpload.dataset.canCreateFolders === 'true';
@@ -1153,6 +1155,8 @@ if (dropUpload) {
             surface.classList.toggle('ring-4', active);
             surface.classList.toggle('ring-brand/10', active);
         });
+        dropIdleHints.forEach((hint) => hint.classList.toggle('hidden', active));
+        dropActiveHints.forEach((hint) => hint.classList.toggle('hidden', !active));
     };
 
     const showProgress = () => progressWraps.forEach((element) => element.classList.remove('hidden'));
@@ -1246,6 +1250,7 @@ if (dropUpload) {
         data.delete('display_name');
         data.set('kind', item.kind);
         data.set('relative_path', item.relativePath);
+        data.set('section', dropUpload.dataset.section || '');
 
         if (item.file) {
             data.set('file', item.file, item.file.name);
@@ -1343,8 +1348,8 @@ if (dropUpload) {
         );
     };
 
-    const runUpload = async (items) => {
-        if (!form || uploading || uploadInProgress) {
+    const runUpload = async (items, lockAlreadyStarted = false) => {
+        if (!form || uploading || (uploadInProgress && !lockAlreadyStarted)) {
             return;
         }
 
@@ -1352,6 +1357,9 @@ if (dropUpload) {
             showProgress();
             setStatus('No tienes permiso para crear las carpetas arrastradas en esta ubicación.');
             setCount('');
+            if (lockAlreadyStarted) {
+                endUploadLock();
+            }
             return;
         }
 
@@ -1361,6 +1369,9 @@ if (dropUpload) {
             showProgress();
             setStatus(`«${oversized.relativePath}» excede el límite de 200 MB.`);
             setCount('');
+            if (lockAlreadyStarted) {
+                endUploadLock();
+            }
             return;
         }
 
@@ -1370,7 +1381,11 @@ if (dropUpload) {
         setProgress(Math.max(items.length, 1), 0);
         setStatus('Iniciando carga…');
         setCount(`0 de ${items.length}`);
-        beginUploadLock('Iniciando carga…', items.length);
+        if (!lockAlreadyStarted) {
+            beginUploadLock('Iniciando carga…', items.length);
+        } else {
+            updateUploadLock('Iniciando carga…', 0, items.length);
+        }
         const errors = [];
         let completed = 0;
 
@@ -1415,6 +1430,33 @@ if (dropUpload) {
 
         setStatus(`${completed - errors.length} de ${completed} elementos se cargaron. ${errors.length} fallaron. ${errors.slice(0, 2).join(' ')}`);
         endUploadLock();
+    };
+
+    const startDroppedUpload = async (dataTransfer) => {
+        if (uploading || uploadInProgress) {
+            return;
+        }
+
+        beginUploadLock('Preparando los elementos para cargarlos…');
+
+        try {
+            const items = await droppedItems(dataTransfer);
+
+            if (items.length === 0) {
+                showProgress();
+                setStatus('No se encontraron archivos o carpetas para cargar.');
+                setCount('');
+                endUploadLock();
+                return;
+            }
+
+            await runUpload(items, true);
+        } catch {
+            showProgress();
+            setStatus('No fue posible leer los elementos. Intenta seleccionarlos de nuevo.');
+            setCount('');
+            endUploadLock();
+        }
     };
 
     let restoredStatus = null;
@@ -1487,22 +1529,24 @@ if (dropUpload) {
             return;
         }
 
-        try {
-            const items = await droppedItems(event.dataTransfer);
+        await startDroppedUpload(event.dataTransfer);
+    });
 
-            if (items.length === 0) {
-                showProgress();
-                setStatus('No se encontraron archivos o carpetas para cargar.');
-                setCount('');
-                return;
-            }
+    document.addEventListener('paste', async (event) => {
+        const target = event.target;
 
-            await runUpload(items);
-        } catch {
-            showProgress();
-            setStatus('No fue posible leer los elementos arrastrados. Intenta seleccionarlos de nuevo.');
-            setCount('');
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable) {
+            return;
         }
+
+        const files = Array.from(event.clipboardData?.files || []);
+
+        if (files.length === 0) {
+            return;
+        }
+
+        event.preventDefault();
+        await startDroppedUpload(event.clipboardData);
     });
 }
 

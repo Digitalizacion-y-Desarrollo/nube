@@ -8,6 +8,7 @@
             >
                 <form id="file-upload-form" action="{{ route('files.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4" data-file-upload-form data-sharing-form>
                     @csrf
+                    <input type="hidden" name="section" value="{{ $section }}">
 
                     <section
                         data-drop-upload-surface
@@ -151,6 +152,7 @@
             >
                     <form action="{{ route('folders.store') }}" method="POST" class="space-y-4" data-sharing-form>
                     @csrf
+                    <input type="hidden" name="section" value="{{ $section }}">
                     <x-ui.input
                         name="name"
                         label="Nombre de la carpeta"
@@ -652,31 +654,36 @@
         <section
             data-drop-upload
             data-drop-upload-surface
-            data-drop-endpoint="{{ route('files.drop-store') }}"
+            data-drop-endpoint="{{ $section === 'area' ? route('area.drop-store') : route('files.drop-store') }}"
             data-upload-form="file-upload-form"
+            data-section="{{ $section }}"
             data-can-create-folders="{{ $canCreateFolder ? 'true' : 'false' }}"
             data-max-file-size="{{ (int) config('nube.files.max_size_kb') * 1024 }}"
             aria-labelledby="drop-upload-title"
-            class="mb-5 rounded-xl border-2 border-dashed border-line bg-surface px-4 py-4 transition sm:px-5"
+            class="mb-5 flex min-h-56 items-center justify-center rounded-2xl border-2 border-dashed border-line bg-surface-alt px-5 py-8 text-center transition sm:min-h-64 sm:px-8"
         >
-            <div class="flex items-center gap-3">
-                <span class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand/5 text-brand dark:text-white">
-                    <x-ui.icon name="upload-cloud" :size="22" alt="" />
+            <div class="max-w-xl">
+                <span class="mx-auto flex size-16 items-center justify-center rounded-2xl bg-brand/10 text-brand shadow-sm dark:bg-white/10 dark:text-white">
+                    <x-ui.icon name="upload-cloud" :size="30" alt="" />
                 </span>
-                <div class="min-w-0 flex-1">
-                    <h3 id="drop-upload-title" class="text-sm font-bold text-ink">
-                        Arrastra aquí archivos o carpetas
-                    </h3>
-                    <p class="mt-1 text-xs leading-5 text-muted" data-drop-upload-hint>
-                        Se cargarán en {{ $currentFolder ? 'esta carpeta' : 'la ubicación actual' }} y se conservará la estructura de sus subcarpetas.
-                    </p>
-                    <div class="mt-3 hidden" data-drop-upload-progress-wrap>
-                        <div class="flex items-center justify-between gap-3 text-xs font-semibold text-muted">
-                            <span data-drop-upload-status aria-live="polite">Preparando carga…</span>
-                            <span data-drop-upload-count></span>
-                        </div>
-                        <progress data-drop-upload-progress class="mt-2 h-2 w-full accent-brand" value="0" max="1">0%</progress>
+                <h3 id="drop-upload-title" class="mt-4 text-lg font-extrabold text-ink">
+                    Suelta tus archivos o carpetas aquí
+                </h3>
+                <p class="mt-2 text-sm leading-6 text-muted" data-drop-upload-hint data-drop-upload-idle>
+                    Puedes arrastrar uno o varios elementos. Se cargarán en {{ $currentFolder ? 'esta carpeta' : 'la ubicación actual' }}.
+                </p>
+                <p class="mt-2 hidden text-sm font-semibold text-brand" data-drop-upload-active aria-live="polite">
+                    Listo para cargar: suelta los elementos para comenzar.
+                </p>
+                <p class="mt-3 text-xs text-muted">
+                    Máximo 200 MB por archivo · PDF, Office, TXT, CSV, imágenes o ZIP.
+                </p>
+                <div class="mt-5 hidden" data-drop-upload-progress-wrap>
+                    <div class="flex items-center justify-between gap-3 text-xs font-semibold text-muted">
+                        <span data-drop-upload-status aria-live="polite">Preparando carga…</span>
+                        <span data-drop-upload-count></span>
                     </div>
+                    <progress data-drop-upload-progress class="mt-2 h-2 w-full accent-brand" value="0" max="1">0%</progress>
                 </div>
             </div>
         </section>
@@ -839,6 +846,8 @@
                         Crea una carpeta para comenzar a organizar tus archivos privados.
                     @elseif ($section === 'department')
                         El contenido colaborativo de tu departamento aparecerá en esta ubicación.
+                    @elseif ($section === 'area')
+                        El contenido colaborativo de tu área aparecerá en esta ubicación.
                     @elseif ($section === 'shared')
                         Los archivos y carpetas que otras personas compartan directamente contigo aparecerán aquí.
                     @elseif ($section === 'public')

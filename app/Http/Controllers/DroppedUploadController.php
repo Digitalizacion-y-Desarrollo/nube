@@ -33,9 +33,21 @@ class DroppedUploadController extends Controller
             ? Folder::query()->findOrFail($validated['folder_id'])
             : null;
         $visibility = FileVisibility::from($validated['visibility']);
+        $areaExternalId = null;
+        if ($request->routeIs('area.drop-store') || $request->input('section') === 'area') {
+            $areaId = $request->session()->get('access.department.children.0.id');
+            abort_unless((is_string($areaId) || is_int($areaId)) && $request->user()->hasPermission('nube_area_ver'), 403);
+            $areaExternalId = (string) $areaId;
+            $visibility = FileVisibility::Collaborative;
+        }
         $collaborationScope = ($visibility === FileVisibility::Collaborative || $request->boolean('share_privately'))
             ? CollaborationScope::from($validated['collaboration_scope'])
             : null;
+        if ($collaborationScope === CollaborationScope::Area && $areaExternalId === null) {
+            $areaId = $request->session()->get('access.department.children.0.id');
+            abort_unless(is_string($areaId) || is_int($areaId), 422);
+            $areaExternalId = (string) $areaId;
+        }
         $segments = explode('/', $validated['relative_path']);
         $fileName = $validated['kind'] === 'file' ? array_pop($segments) : null;
 
@@ -54,6 +66,7 @@ class DroppedUploadController extends Controller
                 $visibility,
                 $collaborationScope,
                 $validated,
+                $areaExternalId,
             );
 
             if ($validated['kind'] === 'directory') {
@@ -64,7 +77,7 @@ class DroppedUploadController extends Controller
             }
 
             $this->authorize('upload', [File::class, $folder, $visibility]);
-            $this->guardFileName($request, $folder, $visibility, (string) $fileName);
+            $this->guardFileName($request, $folder, $visibility, (string) $fileName, $areaExternalId);
 
             $file = $this->storage->upload(
                 $request->file('file'),
@@ -76,6 +89,7 @@ class DroppedUploadController extends Controller
                 $validated['collaborator_permissions'] ?? [],
                 $fileName,
                 $validated['sharing_expires_at'] ?? null,
+                $areaExternalId,
             );
 
             return response()->json([
@@ -104,11 +118,13 @@ class DroppedUploadController extends Controller
         FileVisibility $visibility,
         ?CollaborationScope $collaborationScope,
         array $validated,
+        ?string $areaExternalId,
     ): ?Folder {
         foreach ($segments as $name) {
             $existing = Folder::query()
                 ->where('owner_id', $request->user()->id)
                 ->where('visibility', $visibility)
+                ->when($areaExternalId !== null, fn ($query) => $query->where('area_external_id', $areaExternalId))
                 ->when(
                     $parent === null,
                     fn ($query) => $query->whereNull('parent_id'),
@@ -138,11 +154,13 @@ class DroppedUploadController extends Controller
                 $visibility,
                 $collaborationScope,
                 $validated,
+                $areaExternalId,
             ): Folder {
                 $folder = Folder::query()->create([
                     'parent_id' => $parent?->id,
                     'owner_id' => $request->user()->id,
                     'department_id' => $parent?->department_id ?? $request->user()->department_id,
+                    'area_external_id' => $parent?->area_external_id ?? $areaExternalId,
                     'name' => $name,
                     'visibility' => $visibility,
                     'collaboration_scope' => $collaborationScope,
@@ -190,6 +208,7 @@ class DroppedUploadController extends Controller
         ?Folder $folder,
         FileVisibility $visibility,
         string $fileName,
+        ?string $areaExternalId = null,
     ): void {
         $query = File::query()
             ->where('folder_id', $folder?->id)
@@ -199,6 +218,10 @@ class DroppedUploadController extends Controller
         $visibility === FileVisibility::Private
             ? $query->where('owner_id', $request->user()->id)
             : $query->where('department_id', $folder?->department_id ?? $request->user()->department_id);
+
+        if ($areaExternalId !== null) {
+            $query->where('area_external_id', $areaExternalId);
+        }
 
         if ($query->exists()) {
             throw ValidationException::withMessages([

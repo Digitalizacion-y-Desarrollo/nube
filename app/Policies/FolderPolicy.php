@@ -28,7 +28,7 @@ class FolderPolicy
                         && $folder->collaboratorCan($user, CollaboratorPermission::View)))
                 && $this->can($user, $this->permissionFor($user, $folder, 'ver')),
             FileVisibility::Collaborative => $this->hasCollaborativeAccess($user, $folder)
-                && $this->can($user, 'nube_departamento_ver'),
+                && $this->can($user, $folder->area_external_id === null ? 'nube_departamento_ver' : 'nube_area_ver'),
             FileVisibility::Public => $this->can($user, 'nube_publicos_ver'),
         };
     }
@@ -161,6 +161,10 @@ class FolderPolicy
         }
 
         if ($folder->visibility === FileVisibility::Collaborative) {
+            if ($folder->area_external_id !== null && ! $this->isInArea($folder->area_external_id)) {
+                return $folder->collaboration_scope === CollaborationScope::Selected
+                    && $folder->collaboratorCan($user, $permission);
+            }
             return ($folder->department_id === $user->department_id
                     && ($folder->owner_id === $user->id || $this->isAreaAdmin($user)))
                 || ($folder->collaboration_scope === CollaborationScope::Selected
@@ -211,6 +215,12 @@ class FolderPolicy
 
     private function hasCollaborativeAccess(User $user, Folder $folder): bool
     {
+        if ($folder->area_external_id !== null) {
+            return ($this->isInArea($folder->area_external_id) && $this->can($user, 'nube_area_ver'))
+                || ($folder->collaboration_scope === CollaborationScope::Selected
+                    && $folder->collaboratorCan($user, CollaboratorPermission::View));
+        }
+
         if ($folder->department_id === $user->department_id
             && ($folder->owner_id === $user->id || $this->isAreaAdmin($user))) {
             return true;
@@ -224,6 +234,14 @@ class FolderPolicy
             $user,
             CollaboratorPermission::View,
         );
+    }
+
+    private function isInArea(string $areaExternalId): bool
+    {
+        $currentArea = session('access.department.children.0.id');
+
+        return (is_string($currentArea) || is_int($currentArea))
+            && (string) $currentArea === $areaExternalId;
     }
 
     private function canViewCollaborativeDestination(

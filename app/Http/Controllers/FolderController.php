@@ -92,6 +92,31 @@ class FolderController extends Controller
         );
     }
 
+    public function area(BrowseExplorerRequest $request, ?Folder $folder = null): View
+    {
+        $areaId = $this->areaExternalId($request);
+        abort_unless($areaId !== null, 404);
+
+        if ($folder !== null) {
+            abort_unless($folder->area_external_id === $areaId || $request->user()->can('view', $folder), 404);
+            $this->guardFolderForSection($request, $folder, 'area');
+        }
+
+        return $this->renderSection(
+            request: $request,
+            section: 'area',
+            title: 'Mi área',
+            description: 'Contenido colaborativo exclusivo de '.(string) session('access.department.children.0.nombre', 'tu área').'.',
+            folders: $this->folderQuery($folder)->when($folder === null, fn (Builder $query): Builder => $query
+                ->where('visibility', FileVisibility::Collaborative)
+                ->where('area_external_id', $areaId)),
+            files: $this->fileQuery($folder)->when($folder === null, fn (Builder $query): Builder => $query
+                ->where('visibility', FileVisibility::Collaborative)
+                ->where('area_external_id', $areaId)),
+            currentFolder: $folder,
+        );
+    }
+
     public function shared(BrowseExplorerRequest $request, ?Folder $folder = null): View
     {
         if ($folder !== null) {
@@ -173,9 +198,21 @@ class FolderController extends Controller
             ? Folder::query()->findOrFail($validated['parent_id'])
             : null;
         $visibility = FileVisibility::from($validated['visibility']);
+        if ($request->input('section') === 'area') {
+            abort_unless($this->areaExternalId($request) !== null && $request->user()->hasPermission('nube_area_ver'), 403);
+            $visibility = FileVisibility::Collaborative;
+        }
         $collaborationScope = ($visibility === FileVisibility::Collaborative || $request->boolean('share_privately'))
             ? CollaborationScope::from($validated['collaboration_scope'])
             : null;
+        $areaExternalId = $parent?->area_external_id;
+        if ($request->input('section') === 'area') {
+            $areaExternalId = $this->areaExternalId($request);
+        }
+        if ($collaborationScope === CollaborationScope::Area) {
+            $areaExternalId = $this->areaExternalId($request);
+            abort_unless($areaExternalId !== null, 422);
+        }
 
         // Client supplied sharing data is never authoritative below a shared root.
         $sharedRoot = $this->inheritance->rootFor($parent);
@@ -193,12 +230,14 @@ class FolderController extends Controller
             $visibility,
             $collaborationScope,
             $sharedRoot,
+            $areaExternalId,
         ): Folder {
             $folder = Folder::query()->create([
                 'parent_id' => $parent?->id,
                 'owner_id' => $request->user()->id,
                 'department_id' => $parent?->department_id
                     ?? $request->user()->department_id,
+                'area_external_id' => $areaExternalId,
                 'name' => $validated['name'],
                 'visibility' => $visibility,
                 'collaboration_scope' => $collaborationScope,
@@ -423,6 +462,10 @@ class FolderController extends Controller
                     && $section === 'department'
                     && $folder->department_id === $request->user()->department_id
                     && $folder->collaboration_scope !== CollaborationScope::Selected)
+                || ($currentFolder === null
+                    && $section === 'area'
+                    && $folder->area_external_id === $this->areaExternalId($request)
+                    && $folder->collaboration_scope !== CollaborationScope::Selected)
                 || $request->user()->can('view', $folder))
             ->map(fn (Folder $folder): array => $this->folderItem(
                 $request,
@@ -443,6 +486,10 @@ class FolderController extends Controller
                 || ($currentFolder === null
                     && $section === 'department'
                     && $file->department_id === $request->user()->department_id
+                    && $file->collaboration_scope !== CollaborationScope::Selected)
+                || ($currentFolder === null
+                    && $section === 'area'
+                    && $file->area_external_id === $this->areaExternalId($request)
                     && $file->collaboration_scope !== CollaborationScope::Selected)
                 || $request->user()->can('view', $file))
             ->map(fn (File $file): array => $this->fileItem(
@@ -505,6 +552,7 @@ class FolderController extends Controller
         $creationVisibility = $sharedRoot?->visibility ?? match ($section) {
             'mine' => FileVisibility::Private,
             'department' => FileVisibility::Collaborative,
+            'area' => FileVisibility::Collaborative,
             'public' => FileVisibility::Public,
             default => null,
         };
@@ -960,6 +1008,9 @@ class FolderController extends Controller
             'department' => $folder === null
                 ? route('folders.department')
                 : route('folders.department.show', $folder),
+            'area' => $folder === null
+                ? route('folders.area')
+                : route('folders.area.show', $folder),
             'public' => $folder === null
                 ? route('folders.public')
                 : route('folders.public.show', $folder),
@@ -976,11 +1027,18 @@ class FolderController extends Controller
     ): RedirectResponse {
         $section = match ($parent?->visibility ?? $visibility) {
             FileVisibility::Private => 'mine',
-            FileVisibility::Collaborative => 'department',
+            FileVisibility::Collaborative => $parent?->area_external_id !== null ? 'area' : 'department',
             FileVisibility::Public => 'public',
         };
 
         return redirect()->to($this->sectionRoute($section, $parent));
+    }
+
+    private function areaExternalId(Request $request): ?string
+    {
+        $id = $request->session()->get('access.department.children.0.id');
+
+        return is_string($id) || is_int($id) ? (string) $id : null;
     }
 
     /**

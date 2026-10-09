@@ -8,6 +8,7 @@
         ['label' => 'Inicio', 'icon' => 'home', 'route' => 'dashboard', 'permission' => null],
         ['label' => 'Mis Archivos', 'icon' => 'folder-open', 'route' => 'folders.mine', 'pattern' => 'folders.mine*', 'permission' => 'nube_mis_archivos_ver'],
         ['label' => 'Mi departamento', 'icon' => 'building', 'route' => 'folders.department', 'pattern' => 'folders.department*', 'permission' => 'nube_departamento_ver'],
+        ['label' => 'Mi área', 'icon' => 'building', 'route' => 'folders.area', 'pattern' => 'folders.area*', 'permission' => 'nube_area_ver', 'requires_area' => true],
         ['label' => 'Compartidos conmigo', 'icon' => 'users', 'route' => 'folders.shared', 'pattern' => 'folders.shared*', 'permission' => 'nube_departamento_ver'],
         ['label' => 'Públicos', 'icon' => 'globe', 'route' => 'folders.public', 'pattern' => 'folders.public*', 'permission' => 'nube_publicos_ver'],
         ['label' => 'Papelera', 'icon' => 'trash', 'route' => 'folders.trash', 'permission' => 'nube_papelera_ver'],
@@ -30,9 +31,11 @@
         && $adminEntryRoute !== false;
     $items = array_filter(
         $items,
-        fn (array $item): bool => $item['permission'] === null
-            || $isAdministrator
-            || in_array($item['permission'], $permissions, true),
+        fn (array $item): bool => (! ($item['requires_area'] ?? false)
+                || filled(session('access.department.children.0.id')))
+            && ($item['permission'] === null
+                || $isAdministrator
+                || in_array($item['permission'], $permissions, true)),
     );
 @endphp
 

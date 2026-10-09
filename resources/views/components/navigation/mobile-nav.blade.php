@@ -7,6 +7,7 @@
         ['label' => 'Inicio', 'icon' => 'home-mobile', 'route' => 'dashboard', 'permission' => null],
         ['label' => 'Archivos', 'icon' => 'folder-nav-mobile', 'route' => 'folders.mine', 'pattern' => 'folders.mine*', 'permission' => 'nube_mis_archivos_ver'],
         ['label' => 'Depto', 'icon' => 'users-nav-mobile', 'route' => 'folders.department', 'pattern' => 'folders.department*', 'permission' => 'nube_departamento_ver'],
+        ['label' => 'Área', 'icon' => 'users-nav-mobile', 'route' => 'folders.area', 'pattern' => 'folders.area*', 'permission' => 'nube_area_ver', 'requires_area' => true],
         ['label' => 'Públicos', 'icon' => 'globe-mobile', 'route' => 'folders.public', 'pattern' => 'folders.public*', 'permission' => 'nube_publicos_ver'],
         ['label' => 'Papelera', 'icon' => 'trash', 'route' => 'folders.trash', 'permission' => 'nube_papelera_ver'],
     ];
@@ -26,9 +27,11 @@
     );
     $items = array_filter(
         $items,
-        fn (array $item): bool => $item['permission'] === null
-            || $isAdministrator
-            || in_array($item['permission'], $permissions, true),
+        fn (array $item): bool => (! ($item['requires_area'] ?? false)
+                || filled(session('access.department.children.0.id')))
+            && ($item['permission'] === null
+                || $isAdministrator
+                || in_array($item['permission'], $permissions, true)),
     );
 
     // El panel administrativo no vive en el menú lateral móvil por permiso

@@ -24,6 +24,7 @@ class File extends Model
         'folder_id',
         'owner_id',
         'department_id',
+        'area_external_id',
         'original_name',
         'display_name',
         'stored_name',
