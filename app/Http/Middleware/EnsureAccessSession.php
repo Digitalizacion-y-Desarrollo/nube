@@ -51,6 +51,7 @@ class EnsureAccessSession
                     'access.permissions' => $authData->permissions,
                     'access.roles' => $authData->roles,
                     'access.validated_at' => now()->timestamp,
+                    ...$this->synchronizer->sessionDepartmentData($authData),
                 ]);
             } catch (AccessApiException) {
                 return $this->endSession($request, 'Tu sesión expiró o no pudo validarse. Inicia sesión nuevamente.');

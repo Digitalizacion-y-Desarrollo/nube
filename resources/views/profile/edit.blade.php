@@ -110,8 +110,14 @@
                 </div>
                 <div>
                     <dt class="text-xs font-semibold text-muted">Departamento</dt>
-                    <dd class="mt-1 text-sm font-medium">{{ $user['department'] }}</dd>
+                    <dd class="mt-1 text-sm font-medium">{{ $departamento }}</dd>
                 </div>
+                @if ($area)
+                    <div>
+                        <dt class="text-xs font-semibold text-muted">Área</dt>
+                        <dd class="mt-1 text-sm font-medium">{{ $area }}</dd>
+                    </div>
+                @endif
                 <div>
                     <dt class="text-xs font-semibold text-muted">Estado</dt>
                     <dd class="mt-1 text-sm font-medium">{{ $profileUser->active ? 'Activo' : 'Inactivo' }}</dd>

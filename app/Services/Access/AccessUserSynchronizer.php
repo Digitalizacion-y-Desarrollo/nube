@@ -14,6 +14,31 @@ use UnexpectedValueException;
 class AccessUserSynchronizer
 {
     /**
+     * @return array{
+     *     access.department.parent: array<string, mixed>|null,
+     *     access.department.children: list<array<string, mixed>>
+     * }
+     */
+    public function sessionDepartmentData(AccessAuthData $authData): array
+    {
+        $departmentData = $this->departmentData($authData);
+        $childData = $departmentData['departamento_hijo'] ?? null;
+
+        $children = match (true) {
+            ! is_array($childData) => [],
+            array_is_list($childData) => array_values(array_filter($childData, is_array(...))),
+            default => [$childData],
+        };
+
+        return [
+            'access.department.parent' => is_array($departmentData['departamento_padre'] ?? null)
+                ? $departmentData['departamento_padre']
+                : null,
+            'access.department.children' => $children,
+        ];
+    }
+
+    /**
      * @param  bool  $isLogin  Sólo un inicio de sesión real actualiza `last_login_at`;
      *                         la revalidación periódica de sesión únicamente sincroniza.
      */
@@ -21,11 +46,7 @@ class AccessUserSynchronizer
     {
         return DB::transaction(function () use ($authData, $isLogin): User {
             $now = now();
-            $department = $this->synchronizeDepartment(
-                is_array($authData->user['departamento'] ?? null)
-                    ? $authData->user['departamento']
-                    : [],
-            );
+            $department = $this->synchronizeDepartment($this->departmentData($authData));
 
             $externalId = $this->requiredString($authData->user['id'] ?? null, 'user.id');
             $email = $this->requiredString($authData->user['email'] ?? null, 'user.email');
@@ -77,17 +98,18 @@ class AccessUserSynchronizer
         $parentData = is_array($departmentData['departamento_padre'] ?? null)
             ? $departmentData['departamento_padre']
             : null;
-        $childData = is_array($departmentData['departamento_hijo'] ?? null)
-            ? $departmentData['departamento_hijo']
-            : null;
 
-        $parent = $parentData === null ? null : $this->upsertDepartment($parentData);
+        return $parentData === null ? null : $this->upsertDepartment($parentData);
+    }
 
-        if ($childData === null) {
-            return $parent;
-        }
-
-        return $this->upsertDepartment($childData, $parent);
+    /**
+     * @return array<string, mixed>
+     */
+    private function departmentData(AccessAuthData $authData): array
+    {
+        return is_array($authData->user['departamento'] ?? null)
+            ? $authData->user['departamento']
+            : [];
     }
 
     /**

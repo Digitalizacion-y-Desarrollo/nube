@@ -61,6 +61,7 @@ class LoginController extends Controller
                 'access.permissions' => $authData->permissions,
                 'access.roles' => $authData->roles,
                 'access.validated_at' => now()->timestamp,
+                ...$synchronizer->sessionDepartmentData($authData),
             ]);
 
             config(['session.expire_on_close' => ! $request->boolean('remember')]);

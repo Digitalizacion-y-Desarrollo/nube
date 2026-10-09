@@ -23,6 +23,8 @@ class ProfileController extends Controller
         /** @var User $user */
         $user = $request->user();
         $user->loadMissing('department:id,name', 'roles:id,name,display_name');
+        $departamento = session('access.department.parent.nombre');
+        $area = session('access.department.children.0.nombre');
 
         return view('profile.edit', [
             'user' => $this->userData($user),
@@ -31,6 +33,8 @@ class ProfileController extends Controller
             'hasAvatar' => $this->avatars->exists($user),
             'maxSizeKb' => (int) config('nube.avatars.max_size_kb', 10240),
             'allowedExtensions' => (array) config('nube.avatars.extensions', ['jpg', 'jpeg', 'png']),
+            'departamento' => $departamento,
+            'area' => $area,
         ]);
     }
 

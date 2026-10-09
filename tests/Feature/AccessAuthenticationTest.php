@@ -46,12 +46,14 @@ class AccessAuthenticationTest extends TestCase
             ->assertSessionHas('access.permissions', [
                 'nube_inicio_ver',
                 'nube_mis_archivos_ver',
-            ]);
+            ])
+            ->assertSessionHas('access.department.parent.nombre', 'Dirección General')
+            ->assertSessionHas('access.department.children.0.nombre', 'Tecnologías de la Información');
 
         $user = User::query()->where('external_id', '25')->firstOrFail();
         $this->assertAuthenticatedAs($user);
-        $this->assertSame('Tecnologías de la Información', $user->department?->name);
-        $this->assertSame('Dirección General', $user->department?->parent?->name);
+        $this->assertSame('Dirección General', $user->department?->name);
+        $this->assertNull($user->department?->parent);
         $this->assertSame(['nube_colaborador'], $user->roles()->pluck('name')->all());
         $this->assertEqualsCanonicalizing(
             ['nube_inicio_ver', 'nube_mis_archivos_ver'],

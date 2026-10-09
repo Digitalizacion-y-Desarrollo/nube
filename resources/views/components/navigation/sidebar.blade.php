@@ -74,13 +74,18 @@
         @endif
     </div>
 
+    @php
+        $departamento = session('access.department.parent.nombre');
+        $area = session('access.department.children.0.nombre');
+    @endphp
+
     <div>
         <div class="flex w-full items-center gap-3 rounded-xl p-1 text-left">
             <a href="{{ route('profile.edit') }}" class="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 transition hover:bg-brand/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" title="Editar foto de perfil">
                 <img src="{{ $user['avatar'] ?? asset('assets/figma/avatar.png') }}" alt="Foto de perfil de {{ $user['name'] ?? 'usuario' }}" width="40" height="40" class="size-10 shrink-0 rounded-full object-cover ring-1 ring-line">
                 <span class="min-w-0 flex-1">
                     <span class="block truncate text-sm font-semibold">{{ $user['name'] ?? 'Carlos Martínez' }}</span>
-                    <span class="block truncate text-xs text-muted">{{ $user['department'] ?? 'Recursos Humanos' }}</span>
+                    <span class="block truncate text-xs text-muted">{{ $area ?? $departamento  || 'Sin departamento' }}</span>
                 </span>
             </a>
             <form action="{{ route('logout') }}" method="POST">
